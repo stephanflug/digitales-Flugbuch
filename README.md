@@ -43,6 +43,11 @@ Code kopieren
 http://<IP-Adresse>:1880
 Ersetzen Sie <IP-Adresse> durch die tatsächliche IP des Raspberry Pi. Alternativ können Sie http://raspberrypi:1880 verwenden, wenn raspberrypi im Netzwerk aufgelöst wird.
 
+<h3 align="center">A passionate frontend developer from India</h3>
+
+<h3 align="left">Connect with me:</h3>
+<p align="left">
+</p>
 
 
 
