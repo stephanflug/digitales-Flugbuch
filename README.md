@@ -3,60 +3,42 @@ Digitales Flugbuch
 
 
 
-Node-RED Installation und Einrichtung
-Dieses Dokument beschreibt, wie Sie Node-RED auf einem Raspberry Pi (oder einem anderen Linux-System) installieren, einrichten und verwenden können.
+<h1 align="left">Hey 👋 What's up?</h1>
 
-Voraussetzungen
-Bevor Sie beginnen, stellen Sie sicher, dass folgende Voraussetzungen erfüllt sind:
+###
 
-Ein Raspberry Pi (oder ein anderes Debian-basiertes Linux-System).
-Internetverbindung.
-Basiskenntnisse in der Nutzung des Terminals.
-Schritt 1: System aktualisieren
-Bevor Sie Node-RED installieren, aktualisieren Sie Ihr Betriebssystem:
+<p align="left">My name is ... and I'm a ..., from ....</p>
 
-bash
-Code kopieren
-sudo apt update
-sudo apt upgrade -y
-Schritt 2: Node-RED mit Skript installieren
-Node-RED bietet ein offizielles Installationsskript, das die Einrichtung von Node.js und Node-RED übernimmt.
+###
 
-Installation
-Führen Sie diesen Befehl aus:
+<h2 align="left">About me</h2>
 
-bash
-Code kopieren
-bash <(curl -sL https://raw.githubusercontent.com/node-red/linux-installers/master/deb/update-nodejs-and-nodered)
-Was das Skript macht:
-Installiert Node.js (falls nicht vorhanden).
-Installiert oder aktualisiert Node-RED.
-Konfiguriert Node-RED als Systemdienst.
-Testen Sie die Installation:
-Nach der Installation können Sie Node-RED starten:
+###
 
-bash
-Code kopieren
-node-red
-Öffnen Sie anschließend den Browser und navigieren Sie zu:
+<p align="left">✨ Creating bugs since ...<br>📚 I'm currently learning ...<br>🎯 Goals: ...<br>🎲 Fun fact: ...</p>
 
-arduino
-Code kopieren
-http://<IP-Adresse>:1880
-Ersetzen Sie <IP-Adresse> durch die IP-Adresse Ihres Raspberry Pi.
+###
 
-Schritt 3: Node-RED als Systemdienst einrichten
-Damit Node-RED automatisch beim Booten startet, richten Sie es als Systemdienst ein.
+<h2 align="left">I code with</h2>
 
-Dienst aktivieren:
-bash
-Code kopieren
-sudo systemctl enable nodered.service
-sudo systemctl start nodered.service
-Status überprüfen:
-Prüfen Sie, ob Node-RED erfolgreich läuft:
+###
 
-bash
-Code kopieren
-sudo systemctl status nodered.service
+<div align="left">
+  <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/javascript/javascript-original.svg" height="40" alt="javascript logo"  />
+  <img width="12" />
+  <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/typescript/typescript-original.svg" height="40" alt="typescript logo"  />
+  <img width="12" />
+  <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/react/react-original.svg" height="40" alt="react logo"  />
+  <img width="12" />
+  <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/nextjs/nextjs-original.svg" height="40" alt="nextjs logo"  />
+  <img width="12" />
+  <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/storybook/storybook-original.svg" height="40" alt="storybook logo"  />
+  <img width="12" />
+  <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/nodejs/nodejs-original.svg" height="40" alt="nodejs logo"  />
+  <img width="12" />
+  <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/nestjs/nestjs-original.svg" height="40" alt="nestjs logo"  />
+  <img width="12" />
+  <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/jest/jest-plain.svg" height="40" alt="jest logo"  />
+</div>
 
+###
