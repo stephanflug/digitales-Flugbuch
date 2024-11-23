@@ -1,5 +1,5 @@
 # digitales-Flugbuch
-Digitales Flugbuch mit Arduino Mega 2560
+Digitales Flugbuch
 
 
 1. Raspberry Pi vorbereiten
@@ -29,19 +29,21 @@ Code kopieren
 sudo systemctl enable nodered.service
 sudo systemctl start nodered.service
 
-Prüfen Sie, ob der Dienst läuft:
 
+Prüfen Sie, ob der Dienst läuft:
 
 Code kopieren
 sudo systemctl status nodered.service
 
 4. Zugriff auf Node-RED
 Öffnen Sie Ihren Browser auf einem Gerät im gleichen Netzwerk wie der Raspberry Pi.
-Geben Sie die IP-Adresse Ihres Raspberry Pi ein, gefolgt von :1880. Beispiel:
-arduino
+Geben Sie die IP-Adresse Ihres Raspberry Pi ein, gefolgt von :1880
+
 Code kopieren
 http://<IP-Adresse>:1880
 Ersetzen Sie <IP-Adresse> durch die tatsächliche IP des Raspberry Pi. Alternativ können Sie http://raspberrypi:1880 verwenden, wenn raspberrypi im Netzwerk aufgelöst wird.
+
+
 
 
 
