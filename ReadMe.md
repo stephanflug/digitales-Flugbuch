@@ -1,6 +1,6 @@
 <h1 align="center">Digitales Flugbuch für Modellflug Vereine</h1>
 <h3 align="center">Mit der Software und der Verbindung zu einem Raspberry Pi Zero kann eine digitale Aufzeichnung erstellt werden, die den Anforderungen der aktuellen Verordnung (EU) 2019/947 entspricht.</h3>
-<h4 align="center">
+<h6 align="center">
 
 
 Funktionsbeschreibung:
@@ -45,7 +45,7 @@ docker ps
 Logs überprüfen (optional) Wenn du sehen möchtest, was im Container passiert, verwende:
 docker logs digitalflightlog
 
-</h4>
+</h6>
 
 
 
