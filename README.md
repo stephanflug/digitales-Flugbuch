@@ -57,7 +57,6 @@ Das /data-Verzeichnis wird als Volume bereitgestellt, damit Daten auch nach eine
 Zwei Ports werden exponiert:
 1880: Für die Node-RED-Weboberfläche.
 1883: Für MQTT-Kommunikation.
-10. Startskript:
 
 
 
