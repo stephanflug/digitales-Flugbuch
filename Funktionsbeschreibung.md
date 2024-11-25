@@ -1,6 +1,6 @@
 
 Dockerfile Beschreibung 
-Dieses Dockerfile erstellt eine Containerumgebung, die für den Betrieb einer Node-RED-Instanz und zusätzlicher Python- und MQTT-Dienste optimiert ist. Es basiert auf dem offiziellen Debian Bullseye-Image und richtet sich an Benutzer, die eine flexible Entwicklungsumgebung für IoT-Anwendungen benötigen.
+Dieses Dockerfile erstellt eine Containerumgebung, die für den Betrieb einer  Node-RED-Instanz und zusätzlicher Python- und MQTT-Dienste optimiert ist. Es basiert auf dem offiziellen Debian Bullseye-Image und richtet sich an Benutzer, die eine flexible Entwicklungsumgebung für IoT-Anwendungen benötigen.
 
 1.Basis-Image:
 Das Dockerfile verwendet das Debian Bullseye-Image als Grundlage, was eine stabile und schlanke Linux-Basis bietet.
