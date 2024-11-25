@@ -1,17 +1,3 @@
-Funktionsbeschreibung:
-
-RFID-Erkennung und Nutzerverifizierung:
-Wenn ein Benutzer seinen RFID-Chip auf das Lesegerät legt, wird die aktuelle Uhrzeit zusammen mit dem Namen des Benutzers aus der Benutzerdatei gespeichert.
-Falls der Benutzer nicht in der Benutzerdatei existiert, wird eine Fehlermeldung ausgegeben.
-
-Erfassung einer zweiten Aktion:
-Wenn derselbe Benutzer den RFID-Chip erneut auf das Lesegerät legt, wird eine zweite aktuelle Uhrzeit ermittelt.
-Anschließend muss der Benutzer die Anzahl der Flüge (bzw. Aktionen) über ein Keypad eingeben.
-
-Datenspeicherung:
-Das Ergebnis (Benutzername, erste Uhrzeit, zweite Uhrzeit, Anzahl der eingegebenen Flüge) wird in einer Zeile gespeichert.
-
-
 
 Dockerfile Beschreibung 
 Dieses Dockerfile erstellt eine Containerumgebung, die für den Betrieb einer Node-RED-Instanz und zusätzlicher Python- und MQTT-Dienste optimiert ist. Es basiert auf dem offiziellen Debian Bullseye-Image und richtet sich an Benutzer, die eine flexible Entwicklungsumgebung für IoT-Anwendungen benötigen.
