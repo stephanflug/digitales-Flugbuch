@@ -23,37 +23,41 @@ Das Dockerfile verwendet das Debian Bullseye-Image als Grundlage, was eine stabi
 Mehrere Umgebungsvariablen werden definiert, um den Container zu konfigurieren:
 DEBIAN_FRONTEND=noninteractive: Verhindert interaktive Dialoge während der Installation.
 TZ=Europe/Berlin: Setzt die Zeitzone auf Mitteleuropa.
+
 PYTHONUSERBASE=/data/python3: Spezifiziert den Speicherort für Python-Bibliotheken.
+
 NODE_RED_HOME=/data/nodered: Gibt das Arbeitsverzeichnis für Node-RED an.
+
 MQTT_DATA_PATH=/data/mqtt: Definiert das Verzeichnis für MQTT-Daten.
+
 PATH="/usr/local/bin:$PATH": Fügt benutzerdefinierte Binaries zum Suchpfad hinzu.
 
-3. Installation von Softwarepaketen:
+4. Installation von Softwarepaketen:
 Die notwendigen Pakete werden installiert:
 curl, python3, pip, git, build-essential, mosquitto, mosquitto-clients.
 Nicht benötigte Installationslisten werden nach der Installation gelöscht, um das Image schlank zu halten.
 
-4. Installation von Node.js und Node-RED:
+5. Installation von Node.js und Node-RED:
 Node.js in Version 18 wird über das Nodesource-Setup-Skript installiert.
 Node-RED wird ohne optionale Module installiert, um den Ressourcenverbrauch zu minimieren.
 
-5. Python-Pakete:
+6. Python-Pakete:
 Python-Pakete werden mit pip aktualisiert und vorbereitet. Diese werden lokal im Container unter /data/python3 gespeichert.
 
-6. MQTT-Konfiguration:
+7. MQTT-Konfiguration:
 MQTT wird vorkonfiguriert:
 Das Standardkonfigurationsverzeichnis von Mosquitto wird in den Pfad /data/mqtt/config verschoben.
 Standardwerte wie Speicherorte für Daten und Logs werden angepasst.
 
-7. Arbeitsverzeichnis und Volumes:
+8. Arbeitsverzeichnis und Volumes:
 Das Arbeitsverzeichnis wird auf /data gesetzt.
 Das /data-Verzeichnis wird als Volume bereitgestellt, damit Daten auch nach einem Neustart des Containers erhalten bleiben.
 
-8. Ports:
+9. Ports:
 Zwei Ports werden exponiert:
 1880: Für die Node-RED-Weboberfläche.
 1883: Für MQTT-Kommunikation.
-9. Startskript:
+10. Startskript:
 
 
 
