@@ -10,7 +10,39 @@ Erfassung einer zweiten Aktion: Wenn derselbe Benutzer den RFID-Chip erneut auf 
 
 Datenspeicherung: Das Ergebnis (Benutzername, erste Uhrzeit, zweite Uhrzeit, Anzahl der eingegebenen Flüge) wird in einer Zeile gespeichert.
 
+Vorbereitung: Verzeichnisse erstellen und Berechtigungen setzen:
 
+mkdir -p /opt/digitalflugbuch/data
+
+Laden den Ordner data.trz herunter  und entpacke den Ordner in /opt/digitalflugbuch/data
+
+
+Berechtigung:
+sudo chown -R 1000:1000 /opt/digitalflugbuch/data
+
+Container starten: Führe den oben genannten docker run-Befehl aus.
+
+docker run -d
+--name stephanflug_digitalflightlog
+--privileged
+-p 1880:1880
+-p 1883:1883
+--restart unless-stopped
+--device /dev/gpiomem
+--device /dev/spidev0.0
+--device /dev/spidev0.1
+-v /opt/digitalflugbuch/data:/data
+-v /opt/digitalflugbuch/data/mqtt:/data/mqtt
+-v /opt/digitalflugbuch/data/nodered:/data/nodered
+-v /opt/digitalflugbuch/data/python3:/data/python3
+digitalflightlog
+
+Status prüfen:
+
+docker ps
+
+Logs überprüfen (optional) Wenn du sehen möchtest, was im Container passiert, verwende:
+docker logs digitalflightlog
 
 
 
