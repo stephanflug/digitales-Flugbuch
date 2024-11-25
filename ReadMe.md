@@ -45,6 +45,6 @@ Logs überprüfen (optional) Wenn du sehen möchtest, was im Container passiert,
 docker logs digitalflightlog
 
 
-
+<h1 align="center">Digitales Flugbuch für Modellflug Vereine</h1>
 
 
