@@ -20,7 +20,7 @@ ASSET_NAME="data.tar"
 
 # Verzeichnisse erstellen
 echo "Erstelle Verzeichnisstruktur..."
-mkdir -p /opt/digitalflugbuch/data
+mkdir -p /opt/digitalflugbuch/
 
 # Die neueste Release-Version abrufen
 echo "Hole die neueste Release-URL..."
@@ -36,7 +36,7 @@ if [ "$ASSET_URL" != "null" ]; then
 
     # Datei entpacken
     echo "Entpacke die Datei..."
-    tar -xvf /tmp/data.tar -C /opt/digitalflugbuch/data
+    tar -xvf /tmp/data.tar -C /opt/digitalflugbuch/
     echo "Entpacken abgeschlossen."
 else
     echo "Fehler: Die Datei $ASSET_NAME konnte nicht gefunden werden."
