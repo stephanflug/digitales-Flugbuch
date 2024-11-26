@@ -14,9 +14,10 @@ if ! command -v jq &>/dev/null; then
     sudo apt-get install -y jq
 fi
 
-# GitHub-Repositorium und Release-Datei
+# GitHub-Repository und Release-Datei
 REPO="stephanflug/digitales-Flugbuch"
 ASSET_NAME="data.tar"
+COMPOSE_FILE="compose.yaml"
 
 # Verzeichnisse erstellen
 echo "Erstelle Verzeichnisstruktur..."
@@ -43,6 +44,10 @@ else
     exit 1
 fi
 
+# Die compose.yaml-Datei herunterladen
+echo "Lade die compose.yaml-Datei herunter..."
+curl -L -o /opt/digitalflugbuch/$COMPOSE_FILE https://raw.githubusercontent.com/$REPO/main/$COMPOSE_FILE
+
 # Berechtigungen setzen
 echo "Setze Berechtigungen für /opt/digitalflugbuch/data..."
 sudo chown -R 1000:1000 /opt/digitalflugbuch/data
@@ -60,6 +65,6 @@ docker run -d --name digitalflugbuch --privileged \
 
 # Server mit Docker Compose starten
 echo "Starte den Server mit Docker Compose..."
-docker compose up -d
+docker compose -f /opt/digitalflugbuch/$COMPOSE_FILE up -d
 
 echo "Setup abgeschlossen."
