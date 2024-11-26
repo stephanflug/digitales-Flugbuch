@@ -76,16 +76,7 @@ Das Skript wird heruntergeladen und im aktuellen Verzeichnis gespeichert.
 Es wird ausführbar gemacht, sodass du es wie ein Programm starten kannst.
 Schließlich wird das Skript ausgeführt, und es erledigt alle im Code definierten Aufgaben.
 
-
-# Status prüfen:
+9. Status prüfen:
 ```
 docker ps
 ```
-
-## Screenshots
-
-
-
-
-## Änderungen
-
