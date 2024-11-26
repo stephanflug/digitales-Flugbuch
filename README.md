@@ -35,20 +35,13 @@ Aktualisiere das System:
 sudo apt update
 sudo apt upgrade -y
 ```
-2.Installiere grundlegende Pakete:
+
+Die empfohlene Methode zur Installation von Docker auf einem Raspberry Pi ist die Verwendung des offiziellen Installationsskripts von Docker, das alle notwendigen Repositorys und Schritte berücksichtigt. 
 ```
-sudo apt install -y apt-transport-https ca-certificates curl software-properties-common
+curl -fsSL https://get.docker.com -o get-docker.sh
 ```
-3. Docker-Repository hinzufügen
 ```
-curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
-echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
-```
-4. Docker installieren
-Aktualisiere die Paketquellen und installiere Docker:
-```
-sudo apt update
-sudo apt install -y docker-ce docker-ce-cli containerd.io
+sudo sh get-docker.sh
 ```
 
 5. Docker-Dienst aktivieren
