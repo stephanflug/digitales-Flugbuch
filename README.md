@@ -28,7 +28,7 @@ Benötigte Hardware
 
   
 ###
-1. Vorbereitungen nur wenn Docker noch nicht auf dem System insatlliert wurde sonst weiter mit Postion 3
+1. Vorbereitungen nur wenn Docker noch nicht auf dem System installiert wurde sonst weiter mit Postion 3
 
 Aktualisiere das System:
 ```
