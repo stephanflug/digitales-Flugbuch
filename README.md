@@ -63,7 +63,7 @@ cd /opt/digitalflugbuch
 
 5. Herunterladen des Skripts mit wget
 ```
-wget -O script.sh https://raw.githubusercontent.com/stephanflug/digitales-Flugbuch/main/script.sh
+sudo wget -O script.sh https://raw.githubusercontent.com/stephanflug/digitales-Flugbuch/main/script.sh
 ```
 6. Ausführbarkeitsrechte setzen
 ```
