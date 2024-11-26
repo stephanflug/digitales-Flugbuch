@@ -42,13 +42,15 @@ sudo chown -R 1000:1000 /opt/digitalflugbuch/data
 
 #Container starten:
 
-docker run -d --name digitalflugbuch --privileged -p 1880:1880 -p 1883:1883 --restart unless-stopped --device /dev/gpiomem --device /dev/spidev0.0 --device /dev/spidev0.1 -v /opt/digitalflugbuch/data:/data -v /opt/digitalflugbuch/data/mqtt:/data/mqtt -v /opt/digitalflugbuch/data/nodered:/data/nodered -v /opt/digitalflugbuch/data/python3:/data/python3 stephanflug/iotsw
+docker run -d --name digitalflugbuch --privileged -p 1880:1880 -p 1883:1883 --restart unless-stopped --device /dev/gpiomem --device /dev/spidev0.0 --device /dev/spidev0.1 -v /opt/digitalflugbuch/data:/data -v /opt/digitalflugbuch/data/mqtt:/data/mqtt -v /opt/digitalflugbuch/data/nodered:/data/nodered -v /opt/digitalflugbuch/data/python3:/data/python3 stephanflug/iotsw:V1
 
 # Start the server
 docker compose up -d
 
-# If you are using docker-compose V1 or Podman
-# docker-compose up -d
+# Status prüfen:
+docker ps
+
+
 ```
 
 
