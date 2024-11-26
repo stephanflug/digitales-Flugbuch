@@ -65,6 +65,11 @@ cd /opt/digitalflugbuch
 ```
 sudo wget -O script.sh https://raw.githubusercontent.com/stephanflug/digitales-Flugbuch/main/script.sh
 ```
+6. Anmeldeung als root Benutzer wenn das Passwort noch nicht gesetzt wurde mit sudo passwd root
+```
+su
+```
+
 6. Script ausführen.
 ```
 sudo bash script.sh
