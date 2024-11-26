@@ -28,15 +28,23 @@ Benötigte Hardware
 
   
 ### Vorbereitung: 
+
+1. Herunterladen des Skripts mit wget
 ```
 wget -O script.sh https://raw.githubusercontent.com/stephanflug/digitales-Flugbuch/main/script.sh
 ```
+2. Ausführbarkeitsrechte setzen
 ```
 chmod +x script.sh
 ```
+3. Skript ausführen
 ```
 ./script.sh
 ```
+Beispielablauf:
+Das Skript wird heruntergeladen und im aktuellen Verzeichnis gespeichert.
+Es wird ausführbar gemacht, sodass du es wie ein Programm starten kannst.
+Schließlich wird das Skript ausgeführt, und es erledigt alle im Code definierten Aufgaben.
 
 
 # Status prüfen:
