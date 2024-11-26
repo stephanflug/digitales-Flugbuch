@@ -47,6 +47,8 @@ sudo sh get-docker.sh
 5. Docker-Dienst aktivieren
 ```
 sudo systemctl start docker
+```
+```
 sudo systemctl enable docker
 ```
 
