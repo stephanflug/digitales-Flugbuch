@@ -29,14 +29,20 @@ Benötigte Hardware
   
 ### Vorbereitung: 
 ```
+wget -O script.sh https://raw.githubusercontent.com/stephanflug/digitales-Flugbuch/main/script.sh
+```
+```
+chmod +x script.sh
+```
+```
+./script.sh
+```
 
 
 # Status prüfen:
-docker ps
-
-
 ```
-
+docker ps
+```
 
 ## Screenshots
 
