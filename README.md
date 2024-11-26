@@ -65,14 +65,11 @@ cd /opt/digitalflugbuch
 ```
 sudo wget -O script.sh https://raw.githubusercontent.com/stephanflug/digitales-Flugbuch/main/script.sh
 ```
-6. Ausführbarkeitsrechte setzen
+6. Script ausführen.
 ```
-sudo chmod +x script.sh
+sudo bash script.sh
 ```
-7. Skript ausführen
-```
-sudo ./script.sh
-```
+
 Beispielablauf:
 Das Skript wird heruntergeladen und im aktuellen Verzeichnis gespeichert.
 Es wird ausführbar gemacht, sodass du es wie ein Programm starten kannst.
