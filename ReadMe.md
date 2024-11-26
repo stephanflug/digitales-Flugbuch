@@ -24,7 +24,7 @@ sudo chown -R 1000:1000 /opt/digitalflugbuch/data
 Container starten: Führe den oben genannten docker run-Befehl aus.
 
 docker run -d
---name stephanflug_digitalflightlog
+--name stephanflug_iotsw
 --privileged
 -p 1880:1880
 -p 1883:1883
@@ -36,14 +36,14 @@ docker run -d
 -v /opt/digitalflugbuch/data/mqtt:/data/mqtt
 -v /opt/digitalflugbuch/data/nodered:/data/nodered
 -v /opt/digitalflugbuch/data/python3:/data/python3
-digitalflightlog
+iotsw
 
 Status prüfen:
 
 docker ps
 
 Logs überprüfen (optional) Wenn du sehen möchtest, was im Container passiert, verwende:
-docker logs digitalflightlog
+docker logs iotsw
 
 </h6>
 
