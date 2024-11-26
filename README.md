@@ -28,7 +28,7 @@ Benötigte Hardware
 
   
 ###
-1. Vorbereitungen
+1. Vorbereitungen nur wenn Docker noch nicht auf dem System insatlliert wurde sonst weiter mit Postion 6
 
 Aktualisiere das System:
 ```
@@ -57,15 +57,17 @@ sudo systemctl start docker
 sudo systemctl enable docker
 ```
 
-1. Herunterladen des Skripts mit wget
+
+
+6. Herunterladen des Skripts mit wget
 ```
 wget -O script.sh https://raw.githubusercontent.com/stephanflug/digitales-Flugbuch/main/script.sh
 ```
-2. Ausführbarkeitsrechte setzen
+7. Ausführbarkeitsrechte setzen
 ```
 chmod +x script.sh
 ```
-3. Skript ausführen
+8. Skript ausführen
 ```
 ./script.sh
 ```
