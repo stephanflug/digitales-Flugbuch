@@ -1,22 +1,37 @@
 #!/bin/bash
 
-# Verzeichnisse erstellen und Berechtigungen setzen
+# GitHub-Repositorium und Release-Datei
+REPO="stephanflug/digitales-Flugbuch"
+ASSET_NAME="data.tar"
+
+# Verzeichnisse erstellen
 echo "Erstelle Verzeichnisstruktur..."
 mkdir -p /opt/digitalflugbuch/data
+
+# Die neueste Release-Version abrufen
+echo "Hole die neueste Release-URL..."
+LATEST_RELEASE=$(curl -s https://api.github.com/repos/$REPO/releases/latest)
+
+# Die Download-URL für das Asset extrahieren
+ASSET_URL=$(echo $LATEST_RELEASE | jq -r ".assets[] | select(.name==\"$ASSET_NAME\") | .browser_download_url")
+
+if [ "$ASSET_URL" != "null" ]; then
+    # Datei herunterladen
+    echo "Lade die neueste Datei herunter..."
+    wget -O /tmp/data.tar $ASSET_URL
+
+    # Datei entpacken
+    echo "Entpacke die Datei..."
+    tar -xvf /tmp/data.tar -C /opt/digitalflugbuch/data
+    echo "Entpacken abgeschlossen."
+else
+    echo "Fehler: Die Datei $ASSET_NAME konnte nicht gefunden werden."
+    exit 1
+fi
 
 # Berechtigungen setzen
 echo "Setze Berechtigungen für /opt/digitalflugbuch/data..."
 sudo chown -R 1000:1000 /opt/digitalflugbuch/data
-
-# Laden und Entpacken des Ordners data.tar
-echo "Lade und entpacke data.tar..."
-if wget -O /tmp/data.tar https://raw.githubusercontent.com/stephanflug/digitales-Flugbuch/main/data.tar; then
-    tar -xvf /tmp/data.tar -C /opt/digitalflugbuch/data
-    echo "Entpacken abgeschlossen."
-else
-    echo "Fehler beim Herunterladen von data.tar."
-    exit 1
-fi
 
 # Docker-Container starten
 echo "Starte Docker-Container..."
