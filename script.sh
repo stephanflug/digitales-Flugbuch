@@ -1,5 +1,19 @@
 #!/bin/bash
 
+# Überprüfen und Konvertieren von Windows-Zeilenenden in Unix-Zeilenenden
+if file "$0" | grep -q "with CRLF line terminators"; then
+    echo "Konvertiere Windows-Zeilenenden in Unix-Zeilenenden..."
+    sed -i 's/\r$//' "$0"
+fi
+
+# Abhängigkeiten installieren, falls nicht vorhanden
+echo "Überprüfe, ob jq installiert ist..."
+if ! command -v jq &>/dev/null; then
+    echo "jq nicht gefunden. Installiere jq..."
+    sudo apt-get update
+    sudo apt-get install -y jq
+fi
+
 # GitHub-Repositorium und Release-Datei
 REPO="stephanflug/digitales-Flugbuch"
 ASSET_NAME="data.tar"
