@@ -28,7 +28,7 @@ Benötigte Hardware
 
   
 ###
-1. Vorbereitungen nur wenn Docker noch nicht auf dem System insatlliert wurde sonst weiter mit Postion 6
+1. Vorbereitungen nur wenn Docker noch nicht auf dem System insatlliert wurde sonst weiter mit Postion 3
 
 Aktualisiere das System:
 ```
@@ -44,34 +44,41 @@ curl -fsSL https://get.docker.com -o get-docker.sh
 sudo sh get-docker.sh
 ```
 
-5. Docker-Dienst aktivieren
+2. Docker-Dienst aktivieren
 ```
 sudo systemctl start docker
 ```
 ```
 sudo systemctl enable docker
 ```
+3.Verzeichniss erstellen für script
+```
+sudo mkdir -p /opt/digitalflugbuch
+```
+4.Wechsel dann in das Verzeichnis:
+```
+cd /opt/digitalflugbuch
+```
 
 
-
-6. Herunterladen des Skripts mit wget
+5. Herunterladen des Skripts mit wget
 ```
 wget -O script.sh https://raw.githubusercontent.com/stephanflug/digitales-Flugbuch/main/script.sh
 ```
-7. Ausführbarkeitsrechte setzen
+6. Ausführbarkeitsrechte setzen
 ```
-chmod +x script.sh
+sudo chmod +x script.sh
 ```
-8. Skript ausführen
+7. Skript ausführen
 ```
-./script.sh
+sudo ./script.sh
 ```
 Beispielablauf:
 Das Skript wird heruntergeladen und im aktuellen Verzeichnis gespeichert.
 Es wird ausführbar gemacht, sodass du es wie ein Programm starten kannst.
 Schließlich wird das Skript ausgeführt, und es erledigt alle im Code definierten Aufgaben.
 
-9. Status prüfen:
+8. Status prüfen:
 ```
 docker ps
 ```
