@@ -74,6 +74,21 @@ su
 ```
 sudo bash script.sh
 ```
+7.Raspi-Config aufrufen
+```
+sudo raspi-config
+```
+Menüoptionen von raspi-config
+> Interface Options
+>Aktivierung von Schnittstellen wie  I2C, SPI
+
+8.Gerät neustarten
+```
+sudo reboot
+```
+
+
+
 
 Beispielablauf:
 Das Skript wird heruntergeladen und im aktuellen Verzeichnis gespeichert.
