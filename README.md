@@ -111,7 +111,12 @@ docker ps
 
 
 
-<a href="https://www.paypal.com/donate/?business=ACU26RPTCA44S&no_recurring=0&item_name=Dieses+Projekt+und+der+Service+kann+nur+durch+eure+Spenden+finanziert+werden.&currency_code=EUR" target="_blank">
-  <img src="https://www.paypalobjects.com/webstatic/mktg/logo/pp_cc_mark_111x69.jpg" alt="Donate with PayPal" />
-</a>
+### Unterstütze das Büro-Kaffeekonto!
+
+Damit der Kaffee im Büro nie ausgeht, wäre eine kleine Spende super! 💰☕  
+Jeder Beitrag hilft, die Kaffeemaschine am Laufen zu halten, damit wir alle produktiv bleiben können!
+
+[**Spende für Kaffee**](https://www.paypal.com/donate/?business=ACU26RPTCA44S&no_recurring=0&item_name=Dieses+Projekt+und+der+Service+kann+nur+durch+eure+Spenden+finanziert+werden.&currency_code=EUR)
+
+Vielen Dank für deine Unterstützung! 🙌
 
