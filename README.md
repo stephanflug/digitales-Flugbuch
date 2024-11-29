@@ -95,10 +95,11 @@ Das Skript wird heruntergeladen und im aktuellen Verzeichnis gespeichert.
 Es wird ausführbar gemacht, sodass du es wie ein Programm starten kannst.
 Schließlich wird das Skript ausgeführt, und es erledigt alle im Code definierten Aufgaben.
 
-8. Status prüfen:
+9. Status prüfen:
 ```
 docker ps
 ```
 
-
+10. Schaltplan Prinzipschema:
+ 
 https://github.com/stephanflug/digitales-Flugbuch/blob/main/Hardware_SteckplatineV1.png
