@@ -1,3 +1,6 @@
+![Logo](https://github.com/stephanflug/digitales-Flugbuch/blob/main/LOGO.jpg?raw=true)
+
+
 <div align="center" width="100%">
     <img src="./frontend/public/icon.svg" width="128" alt="" />
 </div>
