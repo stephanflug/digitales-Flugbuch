@@ -29,7 +29,28 @@ Benötigte Hardware
      - ✅ 1602 LCD-Display mit I2C-Modul
      - ✅ RFID-Tags oder -Karten
 
-  
+Voraussetzungen: Vorinstallation eines Linux-Betriebssystems für den Raspberry Pi Zero
+Für die Nutzung dieses Projekts wird ein Raspberry Pi Zero W2 (oder kompatibles Modell) benötigt, auf dem bereits ein Linux-Betriebssystem vorinstalliert ist. Die gängigste Wahl ist Raspberry Pi OS, aber auch andere Linux-basierte Systeme sind möglich, solange sie mit dem Raspberry Pi kompatibel sind.
+
+Was benötigt wird:
+Raspberry Pi Zero W2 (oder kompatible Version)
+Vorinstalliertes Linux-Betriebssystem auf der SD-Karte
+Empfohlene Version: Raspberry Pi OS Lite oder Raspberry Pi OS Desktop
+Weitere Linux-Distributionen wie Ubuntu MATE, DietPi oder Arch Linux sind ebenfalls möglich.
+Vorbereitungen:
+Betriebssystem installieren:
+
+Wenn noch kein Betriebssystem auf dem Raspberry Pi installiert ist, laden Sie Raspberry Pi Imager herunter, um das Betriebssystem Ihrer Wahl auf eine SD-Karte zu installieren.
+Eine Schritt-für-Schritt-Anleitung zum Installieren von Raspberry Pi OS finden Sie in der offiziellen Raspberry Pi-Dokumentation.
+Raspberry Pi einrichten:
+
+Stecken Sie die SD-Karte in den Raspberry Pi, verbinden Sie das Gerät mit einem Monitor, einer Tastatur und einer Maus, und starten Sie den Raspberry Pi.
+Stellen Sie sicher, dass das Betriebssystem korrekt läuft und der Raspberry Pi mit dem Internet verbunden ist (z. B. über WLAN oder Ethernet).
+Hinweis:
+Ohne ein vorinstalliertes Linux-Betriebssystem ist der Raspberry Pi nicht in der Lage, mit diesem Projekt zu arbeiten. Bitte stellen Sie sicher, dass das Betriebssystem korrekt installiert und betriebsbereit ist, bevor Sie fortfahren.
+
+
+
 ###
 1. Vorbereitungen nur wenn Docker noch nicht auf dem System installiert wurde sonst weiter mit Postion 3
 
