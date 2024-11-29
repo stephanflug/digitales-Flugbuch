@@ -99,3 +99,6 @@ Schließlich wird das Skript ausgeführt, und es erledigt alle im Code definiert
 ```
 docker ps
 ```
+
+
+https://github.com/stephanflug/digitales-Flugbuch/blob/main/Hardware_SteckplatineV1.png
