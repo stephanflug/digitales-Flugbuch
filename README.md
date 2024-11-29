@@ -1,4 +1,4 @@
-<img src="[https://github.com/stephanflug/digitales-Flugbuch/blob/main/LOGO.jpg](https://github.com/stephanflug/digitales-Flugbuch/blob/main/Logo/LOGO.jpg)?raw=true" alt="Logo" width="200" height="200"/>
+<img src="https://github.com/stephanflug/digitales-Flugbuch/blob/main/Logo/LOGO.jpg?raw=true" alt="Logo" width="200" height="200"/>
 
 
 <div align="center" width="100%">
