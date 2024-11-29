@@ -105,4 +105,5 @@ docker ps
 
 10. Schaltplan Prinzipschema:
  
-https://github.com/stephanflug/digitales-Flugbuch/blob/main/Hardware_SteckplatineV1.png
+
+<img src="https://github.com/stephanflug/digitales-Flugbuch/blob/main/Schaltplan/Hardware_SteckplatineV1.png" alt="Logo" width="500" height="500"/>
