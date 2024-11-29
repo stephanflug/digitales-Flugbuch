@@ -1,4 +1,4 @@
-![Logo](https://github.com/stephanflug/digitales-Flugbuch/blob/main/LOGO.jpg?raw=true)
+<img src="https://github.com/stephanflug/digitales-Flugbuch/blob/main/LOGO.jpg?raw=true" alt="Logo" width="50" height="50"/>
 
 
 <div align="center" width="100%">
