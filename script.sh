@@ -64,7 +64,7 @@ docker run -d --name digitalflugbuch --privileged \
     stephanflug/iotsw:V1
 
 # Server mit Docker Compose starten
-echo "Starte den Server mit Docker Compose..."
-docker compose -f /opt/digitalflugbuch/$COMPOSE_FILE up -d
+#echo "Starte den Server mit Docker Compose..."
+#docker compose -f /opt/digitalflugbuch/$COMPOSE_FILE up -d
 
 echo "Setup abgeschlossen."
