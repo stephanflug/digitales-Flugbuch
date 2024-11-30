@@ -61,7 +61,7 @@ docker run -d --name digitalflugbuch --privileged \
     -v /opt/digitalflugbuch/data/mqtt:/data/mqtt \
     -v /opt/digitalflugbuch/data/nodered:/data/nodered \
     -v /opt/digitalflugbuch/data/python3:/data/python3 \
-    stephanflug/iotsw:armv7V1
+    stephanflug/iotsw:armv6V1
 
 
 # Server mit Docker Compose starten
