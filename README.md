@@ -87,7 +87,7 @@ cd /opt/digitalflugbuch
 
 5. Herunterladen des Skripts mit wget
 ```
-sudo wget -O script.sh https://raw.githubusercontent.com/stephanflug/digitales-Flugbuch/main/script.sh
+sudo wget -O script.sh https://raw.githubusercontent.com/stephanflug/digitales-Flugbuch/main/script_armv7.sh
 ```
 6. Anmeldeung als root Benutzer wenn das Passwort noch nicht gesetzt wurde mit sudo passwd root
 ```
@@ -96,7 +96,7 @@ su
 
 6. Script ausführen.
 ```
-sudo bash script.sh
+sudo bash script_armv7.sh
 ```
 7.Raspi-Config aufrufen
 ```
