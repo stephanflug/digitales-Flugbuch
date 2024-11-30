@@ -101,7 +101,7 @@ su
 
 6. Script ausführen.
 ```
-sudo bash script_armv7.sh
+sudo bash script.sh
 ```
 7.Raspi-Config aufrufen
 ```
