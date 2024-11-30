@@ -91,7 +91,7 @@ sudo wget -O script.sh https://raw.githubusercontent.com/stephanflug/digitales-F
 ```
 5b. Herunterladen des Skripts mit wget mit Raspberry Pi 1/Zero W Prozessor ARMV6
 ```
-sudo wget -O script.sh https://raw.githubusercontent.com/stephanflug/digitales-Flugbuch/main/script_armv7.sh
+sudo wget -O script.sh https://raw.githubusercontent.com/stephanflug/digitales-Flugbuch/main/script_armv6.sh
 ```
 
 6. Anmeldeung als root Benutzer wenn das Passwort noch nicht gesetzt wurde mit sudo passwd root
