@@ -134,6 +134,30 @@ Startseite url:http://<IPAdresse>:1880/home
 <img src="https://github.com/stephanflug/digitales-Flugbuch/blob/main/Schaltplan/Hardware_SteckplatineV1.png" alt="Logo" width="800" height="500"/>
 
 
+###
+1.1 Neues Update einspielen
+
+1.2 Wechsel in das Verzeichnis:
+```
+cd /opt/digitalflugbuch
+```
+1.3 Herunterladen des Skripts
+```
+sudo wget -O update_script.sh https://raw.githubusercontent.com/stephanflug/digitales-Flugbuch/main/update_script_armv7.sh
+```
+1.4  Anmeldeung als root Benutzer
+```
+su
+```
+
+1.5. Script ausführen.
+```
+sudo bash update_script.sh
+```
+1.6.Gerät neustarten
+```
+sudo reboot
+```
 
 
 ### Unterstütze das Büro-Kaffeekonto!
