@@ -138,6 +138,14 @@ Startseite url:http://<IPAdresse>:1880/home
 
 <img src="https://github.com/stephanflug/digitales-Flugbuch/blob/main/Schaltplan/Hardware_SteckplatineV1.png" alt="Logo" width="800" height="500"/>
 
+12. Zugriff via Browser:
+ 
+<img src="https://github.com/stephanflug/digitales-Flugbuch/blob/main/Schaltplan/Hardware_SteckplatineV1.png" alt="Logo" width="800" height="500"/>
+
+13. Bild vom fertigen Gerät:
+
+<img src="https://github.com/stephanflug/digitales-Flugbuch/blob/main/Bilder/Bild7.jpg" alt="Logo" width="800" height="500"/>
+
 
 ###
 1.1 Neues Update einspielen
