@@ -56,8 +56,11 @@ curl -L -o /opt/digitalflugbuch/$COMPOSE_FILE https://raw.githubusercontent.com/
 # Verzeichniss komplett löschen
 sudo rm -rf /opt/digitalflugbuch/data/DatenBuch
 
+# Verzeichniss komplett erstellen
+sudo mkdir -p /opt/digitalflugbuch/data/DatenBuch
+
 # Backup wieder zurückspielen
-sudo tar -xvf /opt/digitalflugbuch/DatenBuch_backup.tar -C /opt/digitalflugbuch/data/
+sudo tar -xvf /opt/digitalflugbuch/DatenBuch_backup.tar -C /
 
 
 # Berechtigungen setzen
@@ -67,19 +70,7 @@ sudo chown -R 1000:1000 /opt/digitalflugbuch/data
 
 
 # Docker-Container starten
-echo "Starte Docker-Container..."
-docker run -d --name digitalflugbuch --privileged \
-    -p 1880:1880 -p 1883:1883 --restart unless-stopped \
-    --device /dev/gpiomem --device /dev/spidev0.0 --device /dev/spidev0.1 \
-    -v /opt/digitalflugbuch/data:/data \
-    -v /opt/digitalflugbuch/data/mqtt:/data/mqtt \
-    -v /opt/digitalflugbuch/data/nodered:/data/nodered \
-    -v /opt/digitalflugbuch/data/python3:/data/python3 \
-    stephanflug/iotsw:armv7V1
-
-
-# Server mit Docker Compose starten
-#echo "Starte den Server mit Docker Compose..."
-#docker compose -f /opt/digitalflugbuch/$COMPOSE_FILE up -d
+echo "Starte den Server mit Docker "
+docker start $(docker ps -a -q)
 
 echo "Setup abgeschlossen."
