@@ -140,7 +140,7 @@ Startseite url:http://<IPAdresse>:1880/home
 
 12. Zugriff via Browser:
  
-<img src="https://github.com/stephanflug/digitales-Flugbuch/blob/main/Schaltplan/Hardware_SteckplatineV1.png" alt="Logo" width="800" height="500"/>
+<img src="https://github.com/stephanflug/digitales-Flugbuch/blob/main/Bilder/Webbedienung/Startseite.jpg" alt="Logo" width="800" height="500"/>
 
 13. Bild vom fertigen Gerät:
 
