@@ -115,7 +115,10 @@ Menüoptionen von raspi-config
 ```
 sudo reboot
 ```
-
+9. Danach können Sie die Verwaltungsseite öffnen.
+```
+Startseite url:http://<IPAdresse>:1880/home
+```
 
 
 
