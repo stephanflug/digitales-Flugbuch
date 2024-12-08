@@ -57,7 +57,7 @@ curl -L -o /opt/digitalflugbuch/$COMPOSE_FILE https://raw.githubusercontent.com/
 sudo rm -rf /opt/digitalflugbuch/data/DatenBuch
 
 # Backup wieder zurückspielen
-sudo tar -xvzf /opt/digitalflugbuch/DatenBuch_backup.tar -C /opt/digitalflugbuch/data/
+sudo tar -xvf /opt/digitalflugbuch/DatenBuch_backup.tar -C /opt/digitalflugbuch/data/
 
 
 # Berechtigungen setzen
