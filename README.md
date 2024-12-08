@@ -120,7 +120,7 @@ Schließlich wird das Skript ausgeführt, und es erledigt alle im Code definiert
 
 9. Status prüfen:
 ```
-docker ps
+sudo docker ps
 ```
 
 10. Danach können Sie die Verwaltungsseite öffnen.
