@@ -1,5 +1,9 @@
 #!/bin/bash
 
+# Docker stopen
+echo "Docker Images wird gestop"
+docker stop $(docker ps -q)
+
 # Überprüfen und Konvertieren von Windows-Zeilenenden in Unix-Zeilenenden
 if file "$0" | grep -q "with CRLF line terminators"; then
     echo "Konvertiere Windows-Zeilenenden in Unix-Zeilenenden..."
@@ -19,9 +23,10 @@ REPO="stephanflug/digitales-Flugbuch"
 ASSET_NAME="data.tar"
 COMPOSE_FILE="compose.yaml"
 
-# Verzeichnisse erstellen
-echo "Erstelle Verzeichnisstruktur..."
-mkdir -p /opt/digitalflugbuch/
+# Backup erstellen
+echo "Erstelle Backup"
+sudo tar -cvf /opt/digitalflugbuch/DatenBuch_backup.tar /opt/digitalflugbuch/data/DatenBuch
+
 
 # Die neueste Release-Version abrufen
 echo "Hole die neueste Release-URL..."
@@ -48,9 +53,18 @@ fi
 echo "Lade die compose.yaml-Datei herunter..."
 curl -L -o /opt/digitalflugbuch/$COMPOSE_FILE https://raw.githubusercontent.com/$REPO/main/$COMPOSE_FILE
 
+# Verzeichniss komplett löschen
+sudo rm -rf /opt/digitalflugbuch/data/DatenBuch
+
+# Backup wieder zurückspielen
+sudo tar -xvzf /opt/digitalflugbuch/DatenBuch_backup.tar -C /opt/digitalflugbuch/data/
+
+
 # Berechtigungen setzen
 echo "Setze Berechtigungen für /opt/digitalflugbuch/data..."
 sudo chown -R 1000:1000 /opt/digitalflugbuch/data
+
+
 
 # Docker-Container starten
 echo "Starte Docker-Container..."
