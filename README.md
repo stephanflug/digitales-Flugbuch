@@ -115,12 +115,6 @@ Menüoptionen von raspi-config
 ```
 sudo reboot
 ```
-9. Danach können Sie die Verwaltungsseite öffnen.
-```
-Startseite url:http://<IPAdresse>:1880/home
-```
-
-
 
 Beispielablauf:
 Das Skript wird heruntergeladen und im aktuellen Verzeichnis gespeichert.
@@ -132,7 +126,12 @@ Schließlich wird das Skript ausgeführt, und es erledigt alle im Code definiert
 docker ps
 ```
 
-10. Schaltplan Prinzipschema:
+10. Danach können Sie die Verwaltungsseite öffnen.
+```
+Startseite url:http://<IPAdresse>:1880/home
+```
+
+11. Schaltplan Prinzipschema:
  
 
 <img src="https://github.com/stephanflug/digitales-Flugbuch/blob/main/Schaltplan/Hardware_SteckplatineV1.png" alt="Logo" width="800" height="500"/>
