@@ -22,7 +22,7 @@ Mit der Software und der Verbindung zu einem Raspberry Pi Zero kann eine digital
 -Datensicherung 1x im Monat
 
 
-## ⭐ Boss Server Funktion
+## ⌨️ Boss Server Funktion
 
 Die "Boss Server"-Funktion ermöglicht es, die Inhalte des Flugbuch-Clients mithilfe eines Scripts automatisiert auf den Server hochzuladen. Nach dem Upload werden die Daten analysiert und ausgewertet. Die Ergebnisse werden anschließend in einer grafischen Darstellung auf monatlicher Basis sowie pro Benutzer visualisiert. Diese Funktion bietet eine benutzerfreundliche Übersicht über die Nutzung und Aktivitäten im Flugbuch.
 
