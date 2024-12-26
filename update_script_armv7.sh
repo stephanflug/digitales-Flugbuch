@@ -12,7 +12,7 @@ echo "Logdatei: $LOGFILE"
 echo "-------------------------------------------"
 
 # Überprüfen, ob die IDnummer.txt existiert
-IDDATEI="/opt/digitalflugbuch/data/DatenBuch"
+IDDATEI="/opt/digitalflugbuch/data/DatenBuch/IDnummer.txt"
 if [ ! -f "$IDDATEI" ]; then
     echo "Die Datei IDnummer.txt existiert nicht. Erstelle sie jetzt..."
     
@@ -24,8 +24,12 @@ if [ ! -f "$IDDATEI" ]; then
         exit 1
     fi
 
-    # Generiere eine zufällige ID
+    # Generiere eine zufällige UUID (wenn uuidgen nicht funktioniert, verwenden wir andere Methoden)
     IDNUMMER=$(uuidgen)
+    if [ -z "$IDNUMMER" ]; then
+        echo "Fehler: UUID konnte nicht generiert werden."
+        IDNUMMER=$(date +%s)-$RANDOM
+    fi
 
     # Speichere den Vereinsnamen und die ID in einer Textdatei
     echo "Vereinsname: $VEREINSNAME" > "$IDDATEI"
