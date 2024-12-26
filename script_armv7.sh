@@ -91,7 +91,8 @@ else
     exit 1
 fi
 
-# Speichere den Vereinsnamen und die ID in einer Textdatei
+# Die Datei mit Vereinsname und ID speichern
+# IDnummer.txt erstellen
 echo "Vereinsname: $VEREINSNAME" > /opt/digitalflugbuch/data/DatenBuch/"$IDNUMMER".txt
 echo "ID: $IDNUMMER" >> /opt/digitalflugbuch/data/DatenBuch/"$IDNUMMER".txt
 echo "Vereinsinformationen wurden gespeichert: /opt/digitalflugbuch/data/DatenBuch/$IDNUMMER.txt"
