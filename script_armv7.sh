@@ -33,13 +33,29 @@ REPO="stephanflug/digitales-Flugbuch"
 ASSET_NAME="data.tar"
 COMPOSE_FILE="compose.yaml"
 
-# Verzeichnisse erstellen
-echo "Erstelle Verzeichnisstruktur..."
-mkdir -p /opt/digitalflugbuch/
+# Verzeichnisse erstellen, falls nicht vorhanden
+echo "Überprüfe und erstelle Verzeichnisse..."
+mkdir -p /opt/digitalflugbuch/data
 if [ $? -ne 0 ]; then
-    echo "Fehler: Verzeichnisstruktur konnte nicht erstellt werden."
+    echo "Fehler: Das Verzeichnis /opt/digitalflugbuch/data konnte nicht erstellt werden."
     exit 1
 fi
+
+# Vereinname abfragen
+echo "Geben Sie den Namen des Vereins ein:"
+read VEREINSNAME
+if [ -z "$VEREINSNAME" ]; then
+    echo "Fehler: Kein Vereinsname angegeben."
+    exit 1
+fi
+
+# Generiere eine zufällige ID
+IDNUMMER=$(uuidgen)
+
+# Speichere den Vereinsnamen und die ID in einer Textdatei
+echo "Vereinsname: $VEREINSNAME" > /opt/digitalflugbuch/data/"$IDNUMMER".txt
+echo "ID: $IDNUMMER" >> /opt/digitalflugbuch/data/"$IDNUMMER".txt
+echo "Vereinsinformationen wurden gespeichert: /opt/digitalflugbuch/data/$IDNUMMER.txt"
 
 # Die neueste Release-Version abrufen
 echo "Hole die neueste Release-URL..."
