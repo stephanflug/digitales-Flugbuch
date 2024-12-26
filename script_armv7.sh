@@ -91,11 +91,10 @@ else
     exit 1
 fi
 
-# Die Datei mit Vereinsname und ID speichern
-# IDnummer.txt erstellen
-echo "Vereinsname: $VEREINSNAME" > /opt/digitalflugbuch/data/DatenBuch/"$IDNUMMER".txt
-echo "ID: $IDNUMMER" >> /opt/digitalflugbuch/data/DatenBuch/"$IDNUMMER".txt
-echo "Vereinsinformationen wurden gespeichert: /opt/digitalflugbuch/data/DatenBuch/$IDNUMMER.txt"
+# Datei mit Vereinsnamen und UUID speichern - der Name bleibt immer IDnummer.txt
+echo "Vereinsname: $VEREINSNAME" > /opt/digitalflugbuch/data/DatenBuch/IDnummer.txt
+echo "ID: $IDNUMMER" >> /opt/digitalflugbuch/data/DatenBuch/IDnummer.txt
+echo "Vereinsinformationen wurden gespeichert: /opt/digitalflugbuch/data/DatenBuch/IDnummer.txt"
 
 # Die compose.yaml-Datei herunterladen
 echo "Lade die compose.yaml-Datei herunter..."
