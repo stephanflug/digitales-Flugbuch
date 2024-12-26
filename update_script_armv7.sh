@@ -12,7 +12,7 @@ echo "Logdatei: $LOGFILE"
 echo "-------------------------------------------"
 
 # Überprüfen, ob die IDnummer.txt existiert
-IDDATEI="/opt/digitalflugbuch/data/IDnummer.txt"
+IDDATEI="/opt/digitalflugbuch/data/DatenBuch"
 if [ ! -f "$IDDATEI" ]; then
     echo "Die Datei IDnummer.txt existiert nicht. Erstelle sie jetzt..."
     
