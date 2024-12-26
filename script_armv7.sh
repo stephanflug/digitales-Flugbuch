@@ -35,9 +35,9 @@ COMPOSE_FILE="compose.yaml"
 
 # Verzeichnisse erstellen, falls nicht vorhanden
 echo "Überprüfe und erstelle Verzeichnisse..."
-mkdir -p /opt/digitalflugbuch/data
+mkdir -p /opt/digitalflugbuch/data/DatenBuch
 if [ $? -ne 0 ]; then
-    echo "Fehler: Das Verzeichnis /opt/digitalflugbuch/data konnte nicht erstellt werden."
+    echo "Fehler: Das Verzeichnis /opt/digitalflugbuch/data/DatenBuch konnte nicht erstellt werden."
     exit 1
 fi
 
@@ -92,9 +92,9 @@ else
 fi
 
 # Speichere den Vereinsnamen und die ID in einer Textdatei
-echo "Vereinsname: $VEREINSNAME" > /opt/digitalflugbuch/data/DatenBuch"$IDNUMMER".txt
-echo "ID: $IDNUMMER" >> /opt/digitalflugbuch/data/DatenBuch"$IDNUMMER".txt
-echo "Vereinsinformationen wurden gespeichert: /opt/digitalflugbuch/data/$IDNUMMER.txt"
+echo "Vereinsname: $VEREINSNAME" > /opt/digitalflugbuch/data/DatenBuch/"$IDNUMMER".txt
+echo "ID: $IDNUMMER" >> /opt/digitalflugbuch/data/DatenBuch/"$IDNUMMER".txt
+echo "Vereinsinformationen wurden gespeichert: /opt/digitalflugbuch/data/DatenBuch/$IDNUMMER.txt"
 
 # Die compose.yaml-Datei herunterladen
 echo "Lade die compose.yaml-Datei herunter..."
