@@ -49,6 +49,16 @@ if [ -z "$VEREINSNAME" ]; then
     exit 1
 fi
 
+# UUID erzeugen, falls uuidgen nicht verfügbar ist, verwenden wir /proc/sys/kernel/random/uuid
+if command -v uuidgen &>/dev/null; then
+    IDNUMMER=$(uuidgen)
+else
+    # Alternative Methode zur UUID-Generierung
+    IDNUMMER=$(cat /proc/sys/kernel/random/uuid)
+fi
+
+echo "Generierte ID: $IDNUMMER"
+
 # Die neueste Release-Version abrufen
 echo "Hole die neueste Release-URL..."
 LATEST_RELEASE=$(curl -s https://api.github.com/repos/$REPO/releases/latest)
@@ -81,12 +91,9 @@ else
     exit 1
 fi
 
-# Generiere eine zufällige ID
-IDNUMMER=$(uuidgen)
-
 # Speichere den Vereinsnamen und die ID in einer Textdatei
-echo "Vereinsname: $VEREINSNAME" > /opt/digitalflugbuch/data/"$IDNUMMER".txt
-echo "ID: $IDNUMMER" >> /opt/digitalflugbuch/data/"$IDNUMMER".txt
+echo "Vereinsname: $VEREINSNAME" > /opt/digitalflugbuch/data/DatenBuch"$IDNUMMER".txt
+echo "ID: $IDNUMMER" >> /opt/digitalflugbuch/data/DatenBuch"$IDNUMMER".txt
 echo "Vereinsinformationen wurden gespeichert: /opt/digitalflugbuch/data/$IDNUMMER.txt"
 
 # Die compose.yaml-Datei herunterladen
