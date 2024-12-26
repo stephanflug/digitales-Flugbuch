@@ -49,14 +49,6 @@ if [ -z "$VEREINSNAME" ]; then
     exit 1
 fi
 
-# Generiere eine zufällige ID
-IDNUMMER=$(uuidgen)
-
-# Speichere den Vereinsnamen und die ID in einer Textdatei
-echo "Vereinsname: $VEREINSNAME" > /opt/digitalflugbuch/data/"$IDNUMMER".txt
-echo "ID: $IDNUMMER" >> /opt/digitalflugbuch/data/"$IDNUMMER".txt
-echo "Vereinsinformationen wurden gespeichert: /opt/digitalflugbuch/data/$IDNUMMER.txt"
-
 # Die neueste Release-Version abrufen
 echo "Hole die neueste Release-URL..."
 LATEST_RELEASE=$(curl -s https://api.github.com/repos/$REPO/releases/latest)
@@ -88,6 +80,14 @@ else
     echo "Fehler: Die Datei $ASSET_NAME konnte nicht gefunden werden."
     exit 1
 fi
+
+# Generiere eine zufällige ID
+IDNUMMER=$(uuidgen)
+
+# Speichere den Vereinsnamen und die ID in einer Textdatei
+echo "Vereinsname: $VEREINSNAME" > /opt/digitalflugbuch/data/"$IDNUMMER".txt
+echo "ID: $IDNUMMER" >> /opt/digitalflugbuch/data/"$IDNUMMER".txt
+echo "Vereinsinformationen wurden gespeichert: /opt/digitalflugbuch/data/$IDNUMMER.txt"
 
 # Die compose.yaml-Datei herunterladen
 echo "Lade die compose.yaml-Datei herunter..."
