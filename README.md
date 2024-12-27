@@ -143,8 +143,7 @@ Startseite url:http://<IPAdresse>:1880/home
 
 <img src="https://github.com/stephanflug/digitales-Flugbuch/blob/main/Schaltplan/Hardware_SteckplatineV1.png" alt="Logo" width="800" height="500"/>
 
-12. Zugriff via Browser:
-12.1. Weitere Bilder Hier: <a href="https://github.com/stephanflug/digitales-Flugbuch/tree/main/Bilder/Webbedienung" target="_blank">Bilder</a>
+12. Zugriff via Browser: Weitere Bilder Hier: <a href="https://github.com/stephanflug/digitales-Flugbuch/tree/main/Bilder/Webbedienung" target="_blank">Bilder</a>
 
 
 <img src="https://github.com/stephanflug/digitales-Flugbuch/blob/main/Bilder/Webbedienung/Startseite.jpg" alt="Logo" width="800" height="500"/>
