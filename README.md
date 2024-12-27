@@ -15,6 +15,13 @@ Mit der Software und der Verbindung zu einem Raspberry Pi Zero kann eine digital
 - 🧑‍💼 RFID-Erkennung und Nutzerverifizierung: Wenn ein Benutzer seinen RFID-Chip auf das Lesegerät legt, wird die aktuelle Uhrzeit    zusammen mit dem Namen des Benutzers aus der Benutzerdatei gespeichert. 
 - ⌨️ Falls der Benutzer nicht in der Benutzerdatei existiert, wird eine Fehlermeldung ausgegeben.
 
+## ⭐ Neu ab der Version 1.7
+-Flugbuch-Auswertung direkt auf dem Gerät
+-Möglichkeit, das gesamte Flugbuch zu löschen
+-Flugbuch-Ausgabe im JSON-Format
+-Eingabe von zweistelligen Werten über das Keypad
+-Systeminformationen anzeigen
+
 ## ⭐ Neu ab der Version 1.2
 -Mail versand
 -Browser Zugang für die Verwaltung
