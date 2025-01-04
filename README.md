@@ -15,23 +15,21 @@ Mit der Software und der Verbindung zu einem Raspberry Pi Zero kann eine digital
 - 🧑‍💼 RFID-Erkennung und Nutzerverifizierung: Wenn ein Benutzer seinen RFID-Chip auf das Lesegerät legt, wird die aktuelle Uhrzeit    zusammen mit dem Namen des Benutzers aus der Benutzerdatei gespeichert. 
 - ⌨️ Falls der Benutzer nicht in der Benutzerdatei existiert, wird eine Fehlermeldung ausgegeben.
 
-## ⭐ Neu ab der Version 1.7
--Flugbuch-Auswertung direkt auf dem Gerät
--Möglichkeit, das gesamte Flugbuch zu löschen
--Flugbuch-Ausgabe im JSON-Format
--Eingabe von zweistelligen Werten über das Keypad
--Systeminformationen anzeigen
-
-## ⭐ Neu ab der Version 1.2
--Mail versand
--Browser Zugang für die Verwaltung
--Serviceebene direkt auf dem Gerät
--Datensicherung 1x im Monat
-
-
-## ⌨️ Boss Server Funktion(optional)
-
-Die "Boss Server"-Funktion ermöglicht es, die Inhalte des Flugbuch-Clients mithilfe eines Scripts automatisiert auf den Server hochzuladen. Nach dem Upload werden die Daten analysiert und ausgewertet. Die Ergebnisse werden anschließend in einer grafischen Darstellung auf monatlicher Basis sowie pro Benutzer visualisiert. Diese Funktion bietet eine benutzerfreundliche Übersicht über die Nutzung und Aktivitäten im Flugbuch.
+## ⭐ Möglichkeiten: 
+    -Flugbuch-Auswertung direkt auf dem Gerät
+    -Möglichkeit, das gesamte Flugbuch zu löschen
+    -Flugbuch Einträge bearbeiten
+    -Flugbuch-Ausgabe im JSON-Format
+    -Flugbuch export in CSV
+    -Eingabe von zweistelligen Werten über das Keypad
+    -Systeminformationen anzeigen
+    -Mail versand
+    -Browser Zugang für die Verwaltung
+    -Serviceebene direkt auf dem Gerät
+    -MQTT
+    -MFSD Schnitstelle
+    -Kann auch ohne Internet betrieben werden(Nur wenn eine RTC Batterie verbaut wurde)
+    -Backup und Restore
 
 ## 🔧 Vorbereitung: 
 
