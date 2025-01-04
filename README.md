@@ -32,7 +32,7 @@ Mit der Software und der Verbindung zu einem Raspberry Pi Zero kann eine digital
     -Backup und Restore
 
 ## 🔧 Vorbereitung: 
-
+```
 Benötigte Hardware
      - ✅ Raspberry Pi 3 oder höher oder Raspberry Pi Zero
      - ✅ Speicherkarte (microSD) Kapazität: Mindestens 16 GB, idealerweise 32 GB oder mehr.
@@ -43,7 +43,7 @@ Benötigte Hardware
      - ✅ 16-Tasten-Keypad (4x4) mit I2c
      - ✅ 1602 LCD-Display mit I2C-Modul
      - ✅ RFID-Tags oder -Karten
-
+```
 Voraussetzungen: Vorinstallation eines Linux-Betriebssystems für den Raspberry Pi Zero
 Für die Nutzung dieses Projekts wird ein Raspberry Pi Zero W2 (oder kompatibles Modell) benötigt, auf dem bereits ein Linux-Betriebssystem vorinstalliert ist. Die gängigste Wahl ist Raspberry Pi OS, aber auch andere Linux-basierte Systeme sind möglich, solange sie mit dem Raspberry Pi kompatibel sind.
 
