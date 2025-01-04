@@ -43,6 +43,7 @@ Benötigte Hardware
      - ✅ 16-Tasten-Keypad (4x4) mit I2c
      - ✅ 1602 LCD-Display mit I2C-Modul
      - ✅ RFID-Tags oder -Karten
+     - ✅ RTC Batterie für den offline Modus(nur wenn das Gerät kein Internet hat)
 ```
 Voraussetzungen: Vorinstallation eines Linux-Betriebssystems für den Raspberry Pi Zero
 Für die Nutzung dieses Projekts wird ein Raspberry Pi Zero W2 (oder kompatibles Modell) benötigt, auf dem bereits ein Linux-Betriebssystem vorinstalliert ist. Die gängigste Wahl ist Raspberry Pi OS, aber auch andere Linux-basierte Systeme sind möglich, solange sie mit dem Raspberry Pi kompatibel sind.
