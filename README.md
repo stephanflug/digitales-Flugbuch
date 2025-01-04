@@ -7,7 +7,8 @@
 
 # Digitales Flugbuch für Modellflug Vereine
 
-Mit der Software und der Verbindung zu einem Raspberry Pi Zero kann eine digitale Aufzeichnung erstellt werden, die den Anforderungen der aktuellen Verordnung (EU) 2019/947 entspricht.
+Mit der Software und der Verbindung zu einem Raspberry Pi Zero kann eine digitale Aufzeichnung erstellt werden, die den Anforderungen der aktuellen Verordnung (EU) 2019/947 entspricht.Für Österreich und Deutschland(kann man unter Einstellungen festlegen)
+
 
 
 ## ⭐ Features
