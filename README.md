@@ -35,7 +35,7 @@ Mit der Software und der Verbindung zu einem Raspberry Pi Zero kann eine digital
 ## 🔧 Vorbereitung: 
 ```
 Benötigte Hardware
-- ✅ Raspberry Pi 3 oder höher oder Raspberry Pi Zero
+- ✅ Raspberry Pi 3 oder höher oder Raspberry Pi 2 Zero
 - ✅ Speicherkarte (microSD) Kapazität: Mindestens 16 GB, idealerweise 32 GB oder mehr.
 - ✅ Ein stabiles und ausreichend starkes Netzteil.
 - ✅ Ein Gehäuse 
