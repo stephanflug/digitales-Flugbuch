@@ -145,9 +145,18 @@ sudo docker ps
 Startseite url:http://<IPAdresse>:1880/home
 ```
 
-11. Schaltplan Prinzipschema:   <a href="https://github.com/stephanflug/digitales-Flugbuch/blob/main/Schaltplan/BelegungsaufstellungV1.0.pdf" target="_blank">Belegungsaufstellung</a>
- 
+11 Schaltplan Prinzipschema:   <a href="https://github.com/stephanflug/digitales-Flugbuch/blob/main/Schaltplan/BelegungsaufstellungV1.0.pdf" target="_blank">Belegungsaufstellung</a>
+
+11a Version 1 mit RFID RC522 
 <img src="https://github.com/stephanflug/digitales-Flugbuch/blob/main/Schaltplan/Hardware_SteckplatineV1.png" alt="Logo" width="800" height="500"/>
+
+11b Version 1B mit RFID RC522 + RTC
+<img src="https://github.com/stephanflug/digitales-Flugbuch/blob/main/Schaltplan/Hardware_SteckplatineV1B.png" alt="Logo" width="800" height="500"/>
+
+11c Version 2 mit RFID PN532 + (RTC muss man nicht ausführen wenn das Gerät Internet Zugang hat)
+<img src="https://github.com/stephanflug/digitales-Flugbuch/blob/main/Schaltplan/Hardware_SteckplatineV2.png" alt="Logo" width="800" height="500"/>
+
+
 
 12. Zugriff via Browser: Weitere Bilder Hier: <a href="https://github.com/stephanflug/digitales-Flugbuch/tree/main/Bilder/Webbedienung" target="_blank">Bilder</a>
 
