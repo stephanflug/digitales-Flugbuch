@@ -31,6 +31,7 @@ Mit der Software und der Verbindung zu einem Raspberry Pi Zero kann eine digital
     -MFSD Schnitstelle
     -Kann auch ohne Internet betrieben werden(Nur wenn eine RTC Batterie verbaut wurde)
     -Backup und Restore
+    -Viewer Dashboard für eine externen Anzeige via Browser
 
 ## 🔧 Vorbereitung: 
 ```
