@@ -67,7 +67,7 @@ Stellen Sie sicher, dass das Betriebssystem korrekt läuft und der Raspberry Pi 
 Hinweis:
 Ohne ein vorinstalliertes Linux-Betriebssystem ist der Raspberry Pi nicht in der Lage, mit diesem Projekt zu arbeiten. Bitte stellen Sie sicher, dass das Betriebssystem korrekt installiert und betriebsbereit ist, bevor Sie fortfahren.
 
-
+Installation:  <a href="https://github.com/stephanflug/digitales-Flugbuch/tree/main/Installation" target="_blank">Betriebsystem auf SD Karte</a>
 
 ###
 1. Vorbereitungen nur wenn Docker noch nicht auf dem System installiert wurde sonst weiter mit Postion 3
