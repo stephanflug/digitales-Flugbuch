@@ -64,6 +64,30 @@ if ! command -v jq &>/dev/null; then
     fi
 fi
 
+# Shell In A Box installieren
+echo "Überprüfe, ob Shell In A Box installiert ist..."
+if ! command -v shellinaboxd &>/dev/null; then
+    echo "Shell In A Box nicht gefunden. Installiere es..."
+    sudo apt-get update && sudo apt-get install -y shellinabox
+    if [ $? -ne 0 ]; then
+        echo "Fehler: Shell In A Box konnte nicht installiert werden."
+        exit 1
+    fi
+
+    # Standardkonfiguration für Shell In A Box
+    echo "Aktiviere und starte Shell In A Box..."
+    sudo systemctl enable shellinabox
+    sudo systemctl start shellinabox
+    if [ $? -ne 0 ]; then
+        echo "Fehler: Shell In A Box konnte nicht gestartet werden."
+        exit 1
+    fi
+else
+    echo "Shell In A Box ist bereits installiert. Stelle sicher, dass der Dienst läuft..."
+    sudo systemctl enable shellinabox
+    sudo systemctl start shellinabox
+fi
+
 # GitHub-Repository und Release-Datei
 REPO="stephanflug/digitales-Flugbuch"
 ASSET_NAME="data.tar"
@@ -117,30 +141,6 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-# Verzeichnis komplett löschen
-echo "Lösche altes Datenverzeichnis..."
-sudo rm -rf /opt/digitalflugbuch/data/DatenBuch
-if [ $? -ne 0 ]; then
-    echo "Fehler: Datenverzeichnis konnte nicht gelöscht werden."
-    exit 1
-fi
-
-# Verzeichnis neu erstellen
-echo "Erstelle neues Datenverzeichnis..."
-sudo mkdir -p /opt/digitalflugbuch/data/DatenBuch
-if [ $? -ne 0 ]; then
-    echo "Fehler: Datenverzeichnis konnte nicht erstellt werden."
-    exit 1
-fi
-
-# Backup wiederherstellen
-echo "Stelle Backup wieder her..."
-sudo tar -xvf /opt/digitalflugbuch/DatenBuch_backup.tar -C /
-if [ $? -ne 0 ]; then
-    echo "Fehler: Backup konnte nicht wiederhergestellt werden."
-    exit 1
-fi
-
 # Berechtigungen setzen
 echo "Setze Berechtigungen für /opt/digitalflugbuch/data..."
 sudo chown -R 1000:1000 /opt/digitalflugbuch/data
@@ -159,5 +159,6 @@ fi
 
 echo "-------------------------------------------"
 echo "Update abgeschlossen: $(date)"
+echo "Shell In A Box ist unter http://<IP>:4200 erreichbar."
 echo "Überprüfen Sie die Logdatei unter $LOGFILE"
 echo "-------------------------------------------"
