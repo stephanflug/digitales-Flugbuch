@@ -28,6 +28,34 @@ if ! command -v jq &>/dev/null; then
     fi
 fi
 
+# Abhängigkeiten für Shell In A Box
+echo "Installiere Shell In A Box..."
+if ! command -v shellinaboxd &>/dev/null; then
+    sudo apt-get install -y shellinabox
+    if [ $? -ne 0 ]; then
+        echo "Fehler: Shell In A Box konnte nicht installiert werden."
+        exit 1
+    fi
+fi
+
+# Konfiguration für Shell In A Box
+echo "Konfiguriere Shell In A Box..."
+SHELLINABOX_CONFIG="/etc/default/shellinabox"
+if [ -f "$SHELLINABOX_CONFIG" ]; then
+    sudo sed -i 's/^#SHELLINABOX_PORT=.*/SHELLINABOX_PORT=4200/' "$SHELLINABOX_CONFIG"
+    sudo sed -i 's/^#SHELLINABOX_ARGS=.*/SHELLINABOX_ARGS="--disable-ssl"/' "$SHELLINABOX_CONFIG"
+    sudo systemctl restart shellinabox
+    if [ $? -ne 0 ]; then
+        echo "Fehler: Shell In A Box konnte nicht gestartet werden."
+        exit 1
+    fi
+else
+    echo "Fehler: Konfigurationsdatei für Shell In A Box nicht gefunden."
+    exit 1
+fi
+
+echo "Shell In A Box wurde erfolgreich installiert und läuft unter: https://<IP-Adresse>:4200"
+
 # GitHub-Repository und Release-Datei
 REPO="stephanflug/digitales-Flugbuch"
 ASSET_NAME="data.tar"
