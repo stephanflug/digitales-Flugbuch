@@ -141,6 +141,30 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
+# Verzeichnis komplett löschen
+echo "Lösche altes Datenverzeichnis..."
+sudo rm -rf /opt/digitalflugbuch/data/DatenBuch
+if [ $? -ne 0 ]; then
+    echo "Fehler: Datenverzeichnis konnte nicht gelöscht werden."
+    exit 1
+fi
+
+# Verzeichnis neu erstellen
+echo "Erstelle neues Datenverzeichnis..."
+sudo mkdir -p /opt/digitalflugbuch/data/DatenBuch
+if [ $? -ne 0 ]; then
+    echo "Fehler: Datenverzeichnis konnte nicht erstellt werden."
+    exit 1
+fi
+
+# Backup wiederherstellen
+echo "Stelle Backup wieder her..."
+sudo tar -xvf /opt/digitalflugbuch/DatenBuch_backup.tar -C /
+if [ $? -ne 0 ]; then
+    echo "Fehler: Backup konnte nicht wiederhergestellt werden."
+    exit 1
+fi
+
 # Berechtigungen setzen
 echo "Setze Berechtigungen für /opt/digitalflugbuch/data..."
 sudo chown -R 1000:1000 /opt/digitalflugbuch/data
