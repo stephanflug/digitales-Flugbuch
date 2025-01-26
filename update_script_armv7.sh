@@ -11,33 +11,6 @@ echo "Start des Updates: $(date)"
 echo "Logdatei: $LOGFILE"
 echo "-------------------------------------------"
 
-# Überprüfen, ob die IDnummer.txt existiert
-IDDATEI="/opt/digitalflugbuch/data/DatenBuch/IDnummer.txt"
-if [ ! -f "$IDDATEI" ]; then
-    echo "Die Datei IDnummer.txt existiert nicht. Erstelle sie jetzt..."
-    
-    # Vereinsname abfragen
-    echo "Geben Sie den Namen des Vereins ein:"
-    read VEREINSNAME
-    if [ -z "$VEREINSNAME" ]; then
-        echo "Fehler: Kein Vereinsname angegeben."
-        exit 1
-    fi
-
-    # Generiere eine zufällige UUID (wenn uuidgen nicht funktioniert, verwenden wir andere Methoden)
-    IDNUMMER=$(uuidgen)
-    if [ -z "$IDNUMMER" ]; then
-        echo "Fehler: UUID konnte nicht generiert werden."
-        IDNUMMER=$(date +%s)-$RANDOM
-    fi
-
-    # Speichere den Vereinsnamen und die ID in einer Textdatei
-    echo "Vereinsname: $VEREINSNAME" > "$IDDATEI"
-    echo "ID: $IDNUMMER" >> "$IDDATEI"
-    echo "Vereinsinformationen wurden gespeichert: $IDDATEI"
-else
-    echo "Die Datei IDnummer.txt existiert bereits. Update wird fortgesetzt..."
-fi
 
 # Docker stoppen
 echo "Docker-Container werden gestoppt..."
