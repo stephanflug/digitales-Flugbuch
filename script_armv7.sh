@@ -69,24 +69,6 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-# Vereinname abfragen
-echo "Geben Sie den Namen des Vereins ein:"
-read VEREINSNAME
-if [ -z "$VEREINSNAME" ]; then
-    echo "Fehler: Kein Vereinsname angegeben."
-    exit 1
-fi
-
-# UUID erzeugen, falls uuidgen nicht verfügbar ist, verwenden wir /proc/sys/kernel/random/uuid
-if command -v uuidgen &>/dev/null; then
-    IDNUMMER=$(uuidgen)
-else
-    # Alternative Methode zur UUID-Generierung
-    IDNUMMER=$(cat /proc/sys/kernel/random/uuid)
-fi
-
-echo "Generierte ID: $IDNUMMER"
-
 # Die neueste Release-Version abrufen
 echo "Hole die neueste Release-URL..."
 LATEST_RELEASE=$(curl -s https://api.github.com/repos/$REPO/releases/latest)
@@ -118,11 +100,6 @@ else
     echo "Fehler: Die Datei $ASSET_NAME konnte nicht gefunden werden."
     exit 1
 fi
-
-# Datei mit Vereinsnamen und UUID speichern - der Name bleibt immer IDnummer.txt
-echo "Vereinsname: $VEREINSNAME" > /opt/digitalflugbuch/data/DatenBuch/IDnummer.txt
-echo "ID: $IDNUMMER" >> /opt/digitalflugbuch/data/DatenBuch/IDnummer.txt
-echo "Vereinsinformationen wurden gespeichert: /opt/digitalflugbuch/data/DatenBuch/IDnummer.txt"
 
 # Die compose.yaml-Datei herunterladen
 echo "Lade die compose.yaml-Datei herunter..."
