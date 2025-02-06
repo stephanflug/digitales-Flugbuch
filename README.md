@@ -18,6 +18,10 @@ Mit der Software und der Verbindung zu einem Raspberry Pi Zero kann eine digital
 
 ## ⭐ NEU!
 Neu ab der Version 2.8.Ein fertiges Flugbuch Images.Einfach herunterladen und auf die SD-Karte speichern. Achte dabei unbedingt auf die Installationsanleitung!
+<a href="https://github.com/stephanflug/digitales-Flugbuch/blob/main/Installation/Flugbuch%20Images/Anleitung_Flugbuch_Images.pdf
+" target="_blank">Anleitung</a>
+
+
 
 ## ⭐ Möglichkeiten: 
     -Flugbuch-Auswertung direkt auf dem Gerät
