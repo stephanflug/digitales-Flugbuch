@@ -29,7 +29,6 @@ Neu ab der Version 2.8.Ein fertiges Flugbuch Images.Einfach herunterladen und au
     -Flugbuch Einträge bearbeiten
     -Flugbuch-Ausgabe im JSON-Format
     -Flugbuch export in CSV
-    -Eingabe von zweistelligen Werten über das Keypad
     -Systeminformationen anzeigen
     -Mail versand
     -Browser Zugang für die Verwaltung
