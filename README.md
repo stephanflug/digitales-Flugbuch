@@ -1,4 +1,6 @@
-<img src="https://github.com/stephanflug/digitales-Flugbuch/blob/main/Logo/Flyer.jpg?raw=true" alt="Logo" width="500" height="500"/>
+<p align="center">
+  <img src="https://github.com/stephanflug/digitales-Flugbuch/blob/main/Logo/Flyer.jpg?raw=true" alt="Logo" width="500" height="500"/>
+</p>
 
 
 <div align="center" width="100%">
