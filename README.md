@@ -12,7 +12,7 @@
 Mit der Software und der Verbindung zu einem Raspberry Pi Zero kann eine digitale Aufzeichnung erstellt werden, die den Anforderungen der aktuellen Verordnung (EU) 2019/947 entspricht.Für Österreich und Deutschland(kann man unter Einstellungen festlegen)
 
 ## Kontakt  
-Bei Fragen könnt ihr uns gerne per E-Mail erreichen:  
+Bei Fragen können Sie mich gerne per E-Mail erreichen:  
 📧 [steuerung@gmx.at](mailto:steuerung@gmx.at)
 
 
