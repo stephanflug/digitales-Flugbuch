@@ -178,11 +178,9 @@ Startseite url:http://<IPAdresse>:1880/home
 <img src="https://github.com/stephanflug/digitales-Flugbuch/blob/main/Bilder/Webbedienung/Startseite.jpg" alt="Logo" width="800" height="500"/>
 
 13. Video vom fertigen Gerät:
-
-    <iframe width="560" height="315" src="https://www.youtube.com/embed/2yrWCz5p4jw" frameborder="0" allowfullscreen></iframe>
-
-
-[![YouTube-Video](https://img.youtube.com/vi/2yrWCz5p4jw/0.jpg)](https://www.youtube.com/shorts/2yrWCz5p4jw)
+<a href="https://www.youtube.com/shorts/2yrWCz5p4jw" target="_blank">
+    <img src="https://img.youtube.com/vi/2yrWCz5p4jw/hqdefault.jpg" alt="YouTube Video" width="320">
+</a>
 
 
 ###
