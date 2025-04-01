@@ -177,9 +177,9 @@ Startseite url:http://<IPAdresse>:1880/home
 
 <img src="https://github.com/stephanflug/digitales-Flugbuch/blob/main/Bilder/Webbedienung/Startseite.jpg" alt="Logo" width="800" height="500"/>
 
-13. Bild vom fertigen Gerät:
+13. Video vom fertigen Gerät:
 
-<img src="https://github.com/stephanflug/digitales-Flugbuch/blob/main/Bilder/Bild7.jpg" alt="Logo" width="800" height="500"/>
+[![YouTube-Video](https://img.youtube.com/vi/2yrWCz5p4jw/0.jpg)](https://www.youtube.com/shorts/2yrWCz5p4jw)
 
 
 ###
