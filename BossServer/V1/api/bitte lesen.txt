@@ -1,5 +1,0 @@
-
-Hauptordner api sollte diese Berechtigung haben +unterordner
-
-chmod 775 .
-chown www-data:www-data 
