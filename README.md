@@ -198,6 +198,9 @@ Startseite url:http://<IPAdresse>:1880/home
 ###
 1.1 Neues Update einspielen
 
+Hinweis: Wenn Sie bereits das fertige Image verwenden, müssen Sie lediglich die IP-Adresse des Geräts in den Browser eingeben. Sie gelangen dann direkt zur Grundkonfiguration, in der Sie im Menü den Punkt „Flugbuch-Update“ finden.
+Diese Schritte sind in diesem Fall nicht mehr erforderlich.
+
 1.2 Wechsel in das Verzeichnis:
 ```
 cd /opt/digitalflugbuch
