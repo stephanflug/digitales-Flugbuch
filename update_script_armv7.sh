@@ -11,7 +11,6 @@ echo "Start des Updates: $(date)"
 echo "Logdatei: $LOGFILE"
 echo "-------------------------------------------"
 
-
 # Docker stoppen
 echo "Docker-Container werden gestoppt..."
 docker stop $(docker ps -q)
@@ -47,23 +46,19 @@ if ! command -v shellinaboxd &>/dev/null; then
         exit 1
     fi
 
-    # Standardkonfiguration für Shell In A Box
     echo "Aktiviere und starte Shell In A Box..."
     sudo systemctl enable shellinabox
     sudo systemctl start shellinabox
-    if [ $? -ne 0 ]; then
-        echo "Fehler: Shell In A Box konnte nicht gestartet werden."
-        exit 1
-    fi
 else
     echo "Shell In A Box ist bereits installiert. Stelle sicher, dass der Dienst läuft..."
     sudo systemctl enable shellinabox
     sudo systemctl start shellinabox
 fi
 
-# GitHub-Repository und Release-Datei
+# GitHub-Repository und Release-Dateien
 REPO="stephanflug/digitales-Flugbuch"
 ASSET_NAME="data.tar"
+TOOLS_ARCHIVE="systemtools.tar"
 COMPOSE_FILE="compose.yaml"
 
 # Backup erstellen
@@ -82,51 +77,62 @@ if [ -z "$LATEST_RELEASE" ]; then
     exit 1
 fi
 
-# Die Download-URL für das Asset extrahieren
+# data.tar herunterladen und entpacken
 ASSET_URL=$(echo $LATEST_RELEASE | jq -r ".assets[] | select(.name==\"$ASSET_NAME\") | .browser_download_url")
 if [ "$ASSET_URL" != "null" ]; then
-    # Datei herunterladen
-    echo "Lade die neueste Datei herunter..."
+    echo "Lade $ASSET_NAME herunter..."
     wget -O /tmp/data.tar $ASSET_URL
     if [ $? -ne 0 ]; then
-        echo "Fehler: Datei konnte nicht heruntergeladen werden."
+        echo "Fehler: $ASSET_NAME konnte nicht heruntergeladen werden."
         exit 1
     fi
 
-    # Datei entpacken
-    echo "Entpacke die Datei..."
+    echo "Entpacke $ASSET_NAME..."
     tar -xvf /tmp/data.tar -C /opt/digitalflugbuch/
     if [ $? -ne 0 ]; then
-        echo "Fehler: Datei konnte nicht entpackt werden."
+        echo "Fehler: $ASSET_NAME konnte nicht entpackt werden."
         exit 1
     fi
-    echo "Entpacken abgeschlossen."
 else
-    echo "Fehler: Die Datei $ASSET_NAME konnte nicht gefunden werden."
+    echo "Fehler: $ASSET_NAME wurde im Release nicht gefunden."
     exit 1
 fi
 
-# Die compose.yaml-Datei herunterladen
-echo "Lade die compose.yaml-Datei herunter..."
+# systemtools.tar herunterladen und entpacken
+TOOLS_URL=$(echo $LATEST_RELEASE | jq -r ".assets[] | select(.name==\"$TOOLS_ARCHIVE\") | .browser_download_url")
+if [ "$TOOLS_URL" != "null" ]; then
+    echo "Lade $TOOLS_ARCHIVE herunter..."
+    wget -O /tmp/systemtools.tar $TOOLS_URL
+    if [ $? -ne 0 ]; then
+        echo "Fehler: $TOOLS_ARCHIVE konnte nicht heruntergeladen werden."
+        exit 1
+    fi
+
+    echo "Entpacke $TOOLS_ARCHIVE nach /opt/tools/system/..."
+    sudo mkdir -p /opt/tools/system/
+    sudo tar -xvf /tmp/systemtools.tar -C /opt/tools/system/
+    if [ $? -ne 0 ]; then
+        echo "Fehler: $TOOLS_ARCHIVE konnte nicht entpackt werden."
+        exit 1
+    fi
+else
+    echo "Hinweis: $TOOLS_ARCHIVE wurde im Release nicht gefunden."
+fi
+
+# compose.yaml herunterladen
+echo "Lade $COMPOSE_FILE herunter..."
 curl -L -o /opt/digitalflugbuch/$COMPOSE_FILE https://raw.githubusercontent.com/$REPO/main/$COMPOSE_FILE
 if [ $? -ne 0 ]; then
-    echo "Fehler: compose.yaml konnte nicht heruntergeladen werden."
+    echo "Fehler: $COMPOSE_FILE konnte nicht heruntergeladen werden."
     exit 1
 fi
 
-# Verzeichnis komplett löschen
+# Altes Verzeichnis löschen und neu erstellen
 echo "Lösche altes Datenverzeichnis..."
 sudo rm -rf /opt/digitalflugbuch/data/DatenBuch
-if [ $? -ne 0 ]; then
-    echo "Fehler: Datenverzeichnis konnte nicht gelöscht werden."
-    exit 1
-fi
-
-# Verzeichnis neu erstellen
-echo "Erstelle neues Datenverzeichnis..."
 sudo mkdir -p /opt/digitalflugbuch/data/DatenBuch
 if [ $? -ne 0 ]; then
-    echo "Fehler: Datenverzeichnis konnte nicht erstellt werden."
+    echo "Fehler: Datenverzeichnis konnte nicht neu erstellt werden."
     exit 1
 fi
 
@@ -145,6 +151,11 @@ if [ $? -ne 0 ]; then
     echo "Fehler: Berechtigungen konnten nicht gesetzt werden."
     exit 1
 fi
+
+# system_monitor.timer neu laden
+echo "Lade systemd-Timer für system_monitor.sh neu..."
+sudo systemctl daemon-reload
+sudo systemctl restart system_monitor.timer
 
 # Docker-Container starten
 echo "Starte Docker-Container..."
