@@ -28,7 +28,6 @@ if ! command -v jq &>/dev/null; then
     fi
 fi
 
-# Abhängigkeiten für Shell In A Box
 echo "Installiere Shell In A Box..."
 if ! command -v shellinaboxd &>/dev/null; then
     sudo apt-get install -y shellinabox
@@ -38,7 +37,6 @@ if ! command -v shellinaboxd &>/dev/null; then
     fi
 fi
 
-# Konfiguration für Shell In A Box
 echo "Konfiguriere Shell In A Box..."
 SHELLINABOX_CONFIG="/etc/default/shellinabox"
 if [ -f "$SHELLINABOX_CONFIG" ]; then
@@ -56,20 +54,15 @@ fi
 
 echo "Shell In A Box wurde erfolgreich installiert und läuft unter: https://<IP-Adresse>:4200"
 
-# GitHub-Repository und Release-Datei
 REPO="stephanflug/digitales-Flugbuch"
 ASSET_NAME="data.tar"
+TOOLS_ARCHIVE="systemtools.tar"
 COMPOSE_FILE="compose.yaml"
 
-# Verzeichnisse erstellen, falls nicht vorhanden
 echo "Überprüfe und erstelle Verzeichnisse..."
 mkdir -p /opt/digitalflugbuch/data/DatenBuch
-if [ $? -ne 0 ]; then
-    echo "Fehler: Das Verzeichnis /opt/digitalflugbuch/data/DatenBuch konnte nicht erstellt werden."
-    exit 1
-fi
+mkdir -p /opt/tools/system/
 
-# Die neueste Release-Version abrufen
 echo "Hole die neueste Release-URL..."
 LATEST_RELEASE=$(curl -s https://api.github.com/repos/$REPO/releases/latest)
 if [ -z "$LATEST_RELEASE" ]; then
@@ -77,47 +70,34 @@ if [ -z "$LATEST_RELEASE" ]; then
     exit 1
 fi
 
-# Die Download-URL für das Asset extrahieren
+# Download und Entpacken von data.tar
 ASSET_URL=$(echo $LATEST_RELEASE | jq -r ".assets[] | select(.name==\"$ASSET_NAME\") | .browser_download_url")
 if [ "$ASSET_URL" != "null" ]; then
-    # Datei herunterladen
-    echo "Lade die neueste Datei herunter..."
+    echo "Lade $ASSET_NAME herunter..."
     wget -O /tmp/data.tar $ASSET_URL
-    if [ $? -ne 0 ]; then
-        echo "Fehler: Datei konnte nicht heruntergeladen werden."
-        exit 1
-    fi
-
-    # Datei entpacken
-    echo "Entpacke die Datei..."
     tar -xvf /tmp/data.tar -C /opt/digitalflugbuch/
-    if [ $? -ne 0 ]; then
-        echo "Fehler: Datei konnte nicht entpackt werden."
-        exit 1
-    fi
-    echo "Entpacken abgeschlossen."
 else
-    echo "Fehler: Die Datei $ASSET_NAME konnte nicht gefunden werden."
+    echo "Fehler: $ASSET_NAME nicht gefunden."
     exit 1
 fi
 
-# Die compose.yaml-Datei herunterladen
+# Download und Entpacken von systemtools.tar
+TOOLS_URL=$(echo $LATEST_RELEASE | jq -r ".assets[] | select(.name==\"$TOOLS_ARCHIVE\") | .browser_download_url")
+if [ "$TOOLS_URL" != "null" ]; then
+    echo "Lade $TOOLS_ARCHIVE herunter..."
+    wget -O /tmp/systemtools.tar $TOOLS_URL
+    tar -xvf /tmp/systemtools.tar -C /opt/tools/system/
+else
+    echo "Fehler: $TOOLS_ARCHIVE nicht gefunden."
+    exit 1
+fi
+
 echo "Lade die compose.yaml-Datei herunter..."
 curl -L -o /opt/digitalflugbuch/$COMPOSE_FILE https://raw.githubusercontent.com/$REPO/main/$COMPOSE_FILE
-if [ $? -ne 0 ]; then
-    echo "Fehler: compose.yaml konnte nicht heruntergeladen werden."
-    exit 1
-fi
 
-# Berechtigungen setzen
-echo "Setze Berechtigungen für /opt/digitalflugbuch/data..."
+echo "Setze Berechtigungen..."
 sudo chown -R 1000:1000 /opt/digitalflugbuch/data
-if [ $? -ne 0 ]; then
-    echo "Fehler: Berechtigungen konnten nicht gesetzt werden."
-    exit 1
-fi
 
-# Docker-Container starten
 echo "Starte Docker-Container..."
 docker run -d --name digitalflugbuch --privileged \
     -p 1880:1880 -p 1883:1883 --restart unless-stopped \
@@ -128,9 +108,31 @@ docker run -d --name digitalflugbuch --privileged \
     -v /opt/digitalflugbuch/data/python3:/data/python3 \
     stephanflug/iotsw:armv7V1
 
-if [ $? -ne 0 ]; then
-    echo "Fehler: Docker-Container konnte nicht gestartet werden."
-    exit 1
-fi
+# Systemd-Timer einrichten für system_monitor.sh
+echo "Richte systemd-Timer für system_monitor.sh ein..."
+cat <<EOF | sudo tee /etc/systemd/system/system_monitor.service
+[Unit]
+Description=System Monitor Script
+
+[Service]
+ExecStart=/opt/tools/system/system_monitor.sh
+EOF
+
+cat <<EOF | sudo tee /etc/systemd/system/system_monitor.timer
+[Unit]
+Description=Alle 1 Minute: System Monitor
+
+[Timer]
+OnBootSec=1min
+OnUnitActiveSec=1min
+Unit=system_monitor.service
+
+[Install]
+WantedBy=timers.target
+EOF
+
+sudo systemctl daemon-reexec
+sudo systemctl daemon-reload
+sudo systemctl enable --now system_monitor.timer
 
 echo "Setup abgeschlossen. Überprüfen Sie die Logdatei unter $LOGFILE"
