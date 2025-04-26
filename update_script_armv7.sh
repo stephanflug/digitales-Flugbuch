@@ -115,9 +115,13 @@ if [ "$TOOLS_URL" != "null" ]; then
         echo "Fehler: $TOOLS_ARCHIVE konnte nicht entpackt werden."
         exit 1
     fi
+
+    echo "Setze Berechtigungen auf rwxrwxrwx (777)..."
+    sudo chmod -R 777 /opt/tools/system/
 else
     echo "Hinweis: $TOOLS_ARCHIVE wurde im Release nicht gefunden."
 fi
+
 
 # compose.yaml herunterladen
 echo "Lade $COMPOSE_FILE herunter..."
