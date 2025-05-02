@@ -59,27 +59,45 @@ Benötigte Hardware
 - ✅ RFID-Tags oder -Karten
 - ✅ RTC Batterie für den offline Modus(nur wenn das Gerät kein Internet hat)
 ```
-Voraussetzungen: Vorinstallation eines Linux-Betriebssystems für den Raspberry Pi Zero
-Für die Nutzung dieses Projekts wird ein Raspberry Pi Zero W2 (oder kompatibles Modell) benötigt, auf dem bereits ein Linux-Betriebssystem vorinstalliert ist. Die gängigste Wahl ist Raspberry Pi OS, aber auch andere Linux-basierte Systeme sind möglich, solange sie mit dem Raspberry Pi kompatibel sind.
+## 🚀 Schnellstart
 
-Was benötigt wird:
-Raspberry Pi Zero W2 (oder kompatible Version)
-Vorinstalliertes Linux-Betriebssystem auf der SD-Karte
-Empfohlene Version: Raspberry Pi OS Lite oder Raspberry Pi OS Desktop
-Weitere Linux-Distributionen wie Ubuntu MATE, DietPi oder Arch Linux sind ebenfalls möglich.
-Vorbereitungen:
-Betriebssystem installieren:
+Verwenden Sie das bereits vorbereitete Image – das spart Zeit und schont die Nerven.
 
-Wenn noch kein Betriebssystem auf dem Raspberry Pi installiert ist, laden Sie Raspberry Pi Imager herunter, um das Betriebssystem Ihrer Wahl auf eine SD-Karte zu installieren.
-Eine Schritt-für-Schritt-Anleitung zum Installieren von Raspberry Pi OS finden Sie in der offiziellen Raspberry Pi-Dokumentation.
-Raspberry Pi einrichten:
+👉 [**Installation: Betriebssystem auf SD-Karte**](https://github.com/stephanflug/digitales-Flugbuch/tree/main/Installation)
 
-Stecken Sie die SD-Karte in den Raspberry Pi, verbinden Sie das Gerät mit einem Monitor, einer Tastatur und einer Maus, und starten Sie den Raspberry Pi.
-Stellen Sie sicher, dass das Betriebssystem korrekt läuft und der Raspberry Pi mit dem Internet verbunden ist (z. B. über WLAN oder Ethernet).
-Hinweis:
-Ohne ein vorinstalliertes Linux-Betriebssystem ist der Raspberry Pi nicht in der Lage, mit diesem Projekt zu arbeiten. Bitte stellen Sie sicher, dass das Betriebssystem korrekt installiert und betriebsbereit ist, bevor Sie fortfahren.
 
-Installation:  <a href="https://github.com/stephanflug/digitales-Flugbuch/tree/main/Installation" target="_blank">Betriebsystem auf SD Karte</a>
+## 🛠️ Alternative Installation auf einem eigenen Raspberry Pi
+
+Wenn Sie das fertige Image nicht verwenden möchten, können Sie die Software auch manuell auf einem selbst eingerichteten Raspberry Pi installieren.
+
+### ✅ Voraussetzungen
+
+- **Hardware:** Raspberry Pi Zero W2 (oder kompatibles Modell)
+- **Betriebssystem:** Vorinstalliertes Linux auf der SD-Karte  
+  - **Empfohlen:** Raspberry Pi OS Lite oder Raspberry Pi OS Desktop  
+  - **Alternativen:** Ubuntu MATE, DietPi, Arch Linux (sofern kompatibel mit Raspberry Pi)
+
+### 📦 Vorbereitung
+
+#### 1. Betriebssystem installieren
+
+Falls noch kein Betriebssystem installiert ist:
+
+- Laden Sie den [**Raspberry Pi Imager**](https://www.raspberrypi.com/software/) herunter.
+- Wählen Sie ein geeignetes Linux-Betriebssystem (z. B. Raspberry Pi OS).
+- Installieren Sie es auf die SD-Karte.
+
+👉 Eine Schritt-für-Schritt-Anleitung finden Sie in der [offiziellen Raspberry Pi-Dokumentation](https://www.raspberrypi.com/documentation/computers/getting-started.html).
+
+#### 2. Raspberry Pi einrichten
+
+- SD-Karte in den Raspberry Pi einlegen
+- Monitor, Tastatur und Maus anschließen
+- Gerät starten und überprüfen, ob das System korrekt läuft
+- Internetverbindung sicherstellen (WLAN oder Ethernet)
+
+> ⚠️ **Hinweis:** Ohne ein vorinstalliertes Linux-Betriebssystem kann dieses Projekt nicht ausgeführt werden. Bitte stellen Sie sicher, dass das System korrekt installiert und betriebsbereit ist, bevor Sie fortfahren.
+
 
 ###
 1. Vorbereitungen nur wenn Docker noch nicht auf dem System installiert wurde sonst weiter mit Postion 3
