@@ -64,7 +64,7 @@ Benötigte Hardware
 Verwenden Sie das bereits vorbereitete Image – das spart Zeit und schont die Nerven.
 
 👉 [**Installation: Betriebssystem auf SD-Karte**](https://github.com/stephanflug/digitales-Flugbuch/releases)
-👉 [**Doko: Betriebssystem auf SD-Karte**](https://github.com/stephanflug/digitales-Flugbuch/releases)  
+👉 [**Doko: Betriebssystem auf SD-Karte**](https://github.com/stephanflug/digitales-Flugbuch/blob/main/Dokumentation/Installation/Flugbuch%20Images/Anleitung_Flugbuch_Images.pdf)  
 
 ## 🛠️ Alternative Installation auf einem eigenen Raspberry Pi
 
