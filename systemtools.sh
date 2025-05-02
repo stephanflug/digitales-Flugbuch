@@ -24,6 +24,10 @@ else
     exit 1
 fi
 
+# Setze die richtigen Berechtigungen für system_monitor.sh
+echo "Setze Berechtigungen für system_monitor.sh..."
+chmod +x /opt/tools/system/system_monitor.sh
+
 # systemd-Timer einrichten für system_monitor.sh
 echo "Richte systemd-Timer für system_monitor.sh ein..."
 cat <<EOF | sudo tee /etc/systemd/system/system_monitor.service
@@ -47,6 +51,7 @@ Unit=system_monitor.service
 WantedBy=timers.target
 EOF
 
+# systemd neu laden und Timer aktivieren
 sudo systemctl daemon-reexec
 sudo systemctl daemon-reload
 sudo systemctl enable --now system_monitor.timer
