@@ -1,44 +1,56 @@
-# Definitionen
+#!/bin/bash
+
+set -e
+
 REPO="stephanflug/digitales-Flugbuch"
 TOOLS_ARCHIVE="systemtools.tar"
+TARGET_DIR="/opt/tools/system"
 
 echo "Überprüfe und erstelle Verzeichnisse..."
-mkdir -p /opt/tools/system/
+mkdir -p "$TARGET_DIR"
 
-# Hole die neueste Release-URL
+# Prüfe ob jq installiert ist
+if ! command -v jq >/dev/null 2>&1; then
+    echo "Fehler: 'jq' ist nicht installiert. Bitte zuerst installieren."
+    exit 1
+fi
+
 echo "Hole die neueste Release-URL..."
 LATEST_RELEASE=$(curl -s https://api.github.com/repos/$REPO/releases/latest)
+
+# Prüfe ob API-Antwort leer ist
 if [ -z "$LATEST_RELEASE" ]; then
     echo "Fehler: Release-Daten konnten nicht abgerufen werden."
     exit 1
 fi
 
-# Download und Entpacken von systemtools.tar
-TOOLS_URL=$(echo $LATEST_RELEASE | jq -r ".assets[] | select(.name==\"$TOOLS_ARCHIVE\") | .browser_download_url")
+TOOLS_URL=$(echo "$LATEST_RELEASE" | jq -r ".assets[] | select(.name==\"$TOOLS_ARCHIVE\") | .browser_download_url")
+
 if [ "$TOOLS_URL" != "null" ]; then
     echo "Lade $TOOLS_ARCHIVE herunter..."
-    wget -O /tmp/systemtools.tar $TOOLS_URL
-    tar -xvf /tmp/systemtools.tar -C /opt/tools/system/
+    wget -O /tmp/systemtools.tar "$TOOLS_URL"
+    tar -xvf /tmp/systemtools.tar -C "$TARGET_DIR"
 else
     echo "Fehler: $TOOLS_ARCHIVE nicht gefunden."
     exit 1
 fi
 
-# Setze die richtigen Berechtigungen für system_monitor.sh
 echo "Setze Berechtigungen für system_monitor.sh..."
-chmod +x /opt/tools/system/system_monitor.sh
+chmod +x "$TARGET_DIR/system_monitor.sh"
 
-# systemd-Timer einrichten für system_monitor.sh
 echo "Richte systemd-Timer für system_monitor.sh ein..."
-cat <<EOF | sudo tee /etc/systemd/system/system_monitor.service
+
+# systemd Service Unit schreiben
+cat <<EOF > /etc/systemd/system/system_monitor.service
 [Unit]
 Description=System Monitor Script
 
 [Service]
-ExecStart=/opt/tools/system/system_monitor.sh
+ExecStart=$TARGET_DIR/system_monitor.sh
 EOF
 
-cat <<EOF | sudo tee /etc/systemd/system/system_monitor.timer
+# Timer Unit schreiben
+cat <<EOF > /etc/systemd/system/system_monitor.timer
 [Unit]
 Description=Alle 1 Minute: System Monitor
 
@@ -52,8 +64,8 @@ WantedBy=timers.target
 EOF
 
 # systemd neu laden und Timer aktivieren
-sudo systemctl daemon-reexec
-sudo systemctl daemon-reload
-sudo systemctl enable --now system_monitor.timer
+systemctl daemon-reexec
+systemctl daemon-reload
+systemctl enable --now system_monitor.timer
 
 echo "system_monitor.sh wurde installiert und als Timer aktiviert."
