@@ -131,11 +131,11 @@ if [ "$HOST_URL" != "null" ]; then
         echo "Entpacke $HOST_ARCHIVE..."
         mkdir -p /tmp/host_temp
         if tar -xvf /tmp/host.tar -C /tmp/host_temp; then
-            echo "Verschiebe HTML-Dateien nach /var/www/..."
-            sudo cp -r /tmp/host_temp/html/* /var/www/ 2>/dev/null || echo "Hinweis: Keine HTML-Dateien gefunden oder Fehler beim Kopieren."
+            echo "Verschiebe HTML-Dateien nach /var/www/... (mit Überschreiben)"
+            sudo cp -rf /tmp/host_temp/html/* /var/www/html/ 2>/dev/null || echo "Hinweis: Keine HTML-Dateien gefunden oder Fehler beim Kopieren."
 
-            echo "Verschiebe CGI-Skripte nach /usr/lib/..."
-            sudo cp -r /tmp/host_temp/cgi-bin/* /usr/lib/ 2>/dev/null || echo "Hinweis: Keine CGI-Dateien gefunden oder Fehler beim Kopieren."
+            echo "Verschiebe CGI-Skripte nach /usr/lib/... (mit Überschreiben)"
+            sudo cp -rf /tmp/host_temp/cgi-bin/* /usr/lib/cgi-bin/  2>/dev/null || echo "Hinweis: Keine CGI-Dateien gefunden oder Fehler beim Kopieren."
 
             echo "Setze Berechtigungen auf 0777 für /var/www/ und /usr/lib/..."
             sudo chmod -R 0777 /var/www/html/
@@ -149,6 +149,7 @@ if [ "$HOST_URL" != "null" ]; then
 else
     echo "Hinweis: $HOST_ARCHIVE wurde im Release nicht gefunden."
 fi
+
 
 
 # compose.yaml herunterladen
