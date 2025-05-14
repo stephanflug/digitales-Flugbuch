@@ -138,8 +138,8 @@ if [ "$HOST_URL" != "null" ]; then
             sudo cp -r /tmp/host_temp/cgi-bin/* /usr/lib/ 2>/dev/null || echo "Hinweis: Keine CGI-Dateien gefunden oder Fehler beim Kopieren."
 
             echo "Setze Berechtigungen auf 0777 für /var/www/ und /usr/lib/..."
-            sudo chmod -R 0777 /var/www/
-            sudo chmod -R 0777 /usr/lib/
+            sudo chmod -R 0777 /var/www/html/
+            sudo chmod -R 0777 /usr/lib/cgi-bin/
         else
             echo "Warnung: $HOST_ARCHIVE konnte nicht entpackt werden. Vorgang wird übersprungen."
         fi
