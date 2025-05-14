@@ -122,6 +122,34 @@ else
     echo "Hinweis: $TOOLS_ARCHIVE wurde im Release nicht gefunden."
 fi
 
+# host.tar herunterladen und entpacken
+HOST_ARCHIVE="host.tar"
+HOST_URL=$(echo $LATEST_RELEASE | jq -r ".assets[] | select(.name==\"$HOST_ARCHIVE\") | .browser_download_url")
+if [ "$HOST_URL" != "null" ]; then
+    echo "Lade $HOST_ARCHIVE herunter..."
+    if wget -O /tmp/host.tar "$HOST_URL"; then
+        echo "Entpacke $HOST_ARCHIVE..."
+        mkdir -p /tmp/host_temp
+        if tar -xvf /tmp/host.tar -C /tmp/host_temp; then
+            echo "Verschiebe HTML-Dateien nach /var/www/..."
+            sudo cp -r /tmp/host_temp/html/* /var/www/ 2>/dev/null || echo "Hinweis: Keine HTML-Dateien gefunden oder Fehler beim Kopieren."
+
+            echo "Verschiebe CGI-Skripte nach /usr/lib/..."
+            sudo cp -r /tmp/host_temp/cgi-bin/* /usr/lib/ 2>/dev/null || echo "Hinweis: Keine CGI-Dateien gefunden oder Fehler beim Kopieren."
+
+            echo "Setze Berechtigungen auf 0777 für /var/www/ und /usr/lib/..."
+            sudo chmod -R 0777 /var/www/
+            sudo chmod -R 0777 /usr/lib/
+        else
+            echo "Warnung: $HOST_ARCHIVE konnte nicht entpackt werden. Vorgang wird übersprungen."
+        fi
+    else
+        echo "Warnung: $HOST_ARCHIVE konnte nicht heruntergeladen werden. Vorgang wird übersprungen."
+    fi
+else
+    echo "Hinweis: $HOST_ARCHIVE wurde im Release nicht gefunden."
+fi
+
 
 # compose.yaml herunterladen
 echo "Lade $COMPOSE_FILE herunter..."
