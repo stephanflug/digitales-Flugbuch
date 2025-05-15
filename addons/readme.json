@@ -11,6 +11,12 @@
       "beschreibung": "Mit der Funktion kann man überprüfen,ob ein SD Karten Fehler vorliegt",
       "version": "1.0",
       "autor": "Ebner Stephan"
+    },
+    {
+      "datei": "healthcheck.sh",
+      "beschreibung": "Zeigt CPU-Last, RAM-Auslastung, SD-Kartenspeicherplatz & Temperatur an",
+      "version": "1.0",
+      "autor": "Ebner Stephan"
     }
   ]
 }
