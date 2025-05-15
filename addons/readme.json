@@ -8,13 +8,4 @@
     "autor": "Ebner Stephan"
   }
 ]
-[
-  {
-    "datei": "sdcheck.sh",
-    "beschreibung": "Mit der Funktion kann man überprüfen, ob das Addon-Verzeichnis richtig erstellt wurde.",
-    "kategorie": "Test",
-    "version": "1.0",
-    "erstellt_am": "14-05-2025",
-    "autor": "Ebner Stephan"
-  }
-]
+
