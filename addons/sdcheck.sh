@@ -13,15 +13,17 @@ echo ""
 
 # Prüfe ob journalctl vorhanden ist
 if command -v journalctl >/dev/null 2>&1; then
-    LOG=$(journalctl -k | grep -iE 'mmc|error|fail|io error')
+    # Nur SD-Karten-bezogene Zeilen (mmc, mmcblk, sd)
+    LOG=$(journalctl -k | grep -iE 'mmc|mmcblk|sd')
 else
-    LOG=$(dmesg | grep -iE 'mmc|error|fail|io error')
+    LOG=$(dmesg | grep -iE 'mmc|mmcblk|sd')
 fi
 
+# Filtere nur Zeilen mit Fehlern
 FEHLER=$(echo "$LOG" | grep -iE 'error|fail|io error')
 
 if [ -n "$FEHLER" ]; then
-    echo "data: Fehler gefunden:"
+    echo "data:  Fehler gefunden:"
     echo ""
     echo "$FEHLER" | while IFS= read -r line; do
         echo "data: $line"
@@ -31,4 +33,3 @@ else
 fi
 
 echo ""
-
