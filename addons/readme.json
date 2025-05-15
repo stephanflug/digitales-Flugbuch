@@ -5,6 +5,12 @@
       "beschreibung": "Mit der Funktion kann man überprüfen, ob das Addon-Verzeichnis richtig erstellt wurde.",
       "version": "1.0",
       "autor": "Ebner Stephan"
+    },
+    {
+      "datei": "sdcheck.sh",
+      "beschreibung": "Mit der Funktion kann man überprüfen,ob ein SD Karten Fehler vorliegt",
+      "version": "1.0",
+      "autor": "Ebner Stephan"
     }
   ]
 }
