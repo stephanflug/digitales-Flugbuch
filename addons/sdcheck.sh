@@ -1,6 +1,5 @@
 #!/bin/sh
 
-# Server-Sent Events Header (für CGI/Webserver wie lighttpd)
 echo "Content-Type: text/event-stream"
 echo "Cache-Control: no-cache"
 echo "Connection: keep-alive"
@@ -9,10 +8,10 @@ echo ""
 echo "data: Starte SD-Karten-Fehlerüberprüfung..."
 echo ""
 
-# Hole relevante dmesg-Zeilen
+
 LOG=$(dmesg | grep -iE 'mmc|error|fail|io error')
 
-# Prüfe auf echte Fehler (nicht nur SD-Initialisierungen)
+
 FEHLER=$(echo "$LOG" | grep -iE 'error|fail|io error')
 
 if [ -n "$FEHLER" ]; then
