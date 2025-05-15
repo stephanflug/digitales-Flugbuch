@@ -1,16 +1,10 @@
 {
-  "addons_info": [
+  "addons": [
     {
       "datei": "testverzeichniss.sh",
       "beschreibung": "Mit der Funktion kann man überprüfen, ob das Addon-Verzeichnis richtig erstellt wurde.",
       "version": "1.0",
       "autor": "Ebner Stephan"
-    },
-    {
-      "datei": "anderes_addon.sh",
-      "beschreibung": "Keine Beschreibung vorhanden",
-      "version": "n/a",
-      "autor": "Unbekannt"
     }
   ]
 }
