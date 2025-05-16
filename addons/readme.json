@@ -17,6 +17,12 @@
       "beschreibung": "Zeigt CPU-Last, RAM-Auslastung, SD-Kartenspeicherplatz & Temperatur an",
       "version": "1.0",
       "autor": "Ebner Stephan"
+     },
+    {
+      "datei": "updateSystem.sh",
+      "beschreibung": "Mit der Funktion wird beim Betriebsystem ein Update durchgeführt ",
+      "version": "1.0",
+      "autor": "Ebner Stephan"
     }
   ]
 }
