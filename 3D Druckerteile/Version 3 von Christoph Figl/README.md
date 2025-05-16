@@ -53,4 +53,4 @@ Gewindeeinsätze (M2.5/M3)	optional	Eingeschmolzen für stabilere Befestigung
 
 🧑‍🔬 Autor
 Erstellt und getestet von Christoph Figl 🛠️
-Fragen, Feedback oder Verbesserungsvorschläge? Gerne via Pull Request oder Issue.
+Fragen, Feedback oder Verbesserungsvorschläge? Gerne via Pull Request.
