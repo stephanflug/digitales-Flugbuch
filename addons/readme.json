@@ -20,7 +20,7 @@
      },
     {
       "datei": "updateSystem.sh",
-      "beschreibung": "Mit der Funktion wird beim Betriebsystem ein Update durchgeführt ",
+      "beschreibung": "Mit dieser Funktion wird ein Update des Betriebssystems durchgeführt. Wichtig: Je nach Alter des Systems kann der Vorgang mehrere Minuten dauern. Bitte darauf achten, dass im Dialogfeld die Meldung „Installation abgeschlossen“ erscheint, bevor Sie den Vorgang beenden",
       "version": "1.0",
       "autor": "Ebner Stephan"
     }
