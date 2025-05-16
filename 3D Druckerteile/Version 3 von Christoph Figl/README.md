@@ -19,3 +19,5 @@ Die Schrauben werden direkt ins Material eingedreht.
 
 🧷 M3 – zur Verschraubung des Gehäusedeckels
 
+
+erstellt und getestet von Herrn Christoph Figl
