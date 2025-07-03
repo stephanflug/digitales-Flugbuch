@@ -13,11 +13,18 @@ echo "-------------------------------------------"
 
 # Docker stoppen
 echo "Docker-Container werden gestoppt..."
-docker stop $(docker ps -q)
-if [ $? -ne 0 ]; then
-    echo "Fehler: Docker-Container konnten nicht gestoppt werden."
-    exit 1
+RUNNING_CONTAINERS=$(docker ps -q)
+
+if [ -n "$RUNNING_CONTAINERS" ]; then
+    docker stop $RUNNING_CONTAINERS
+    if [ $? -ne 0 ]; then
+        echo "Fehler: Docker-Container konnten nicht gestoppt werden."
+        exit 1
+    fi
+else
+    echo "Keine laufenden Docker-Container gefunden. Nichts zu stoppen."
 fi
+
 
 # Überprüfen und Konvertieren von Windows-Zeilenenden in Unix-Zeilenenden
 if file "$0" | grep -q "with CRLF line terminators"; then
