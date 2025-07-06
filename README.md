@@ -47,7 +47,7 @@ Ab Version 3.5 kann die Altitude-Sensor-Funktion direkt mit dem Flugbuch verwend
     -Backup und Restore
     -Viewer Dashboard für eine externen Anzeige via Browser
     -Zusätzliche ist es ab der V3.0 möglich via Rest-API Schnitstelle die Flugbuchdaten zu übermitteln
-    -Ab der 3.5 Version ist es jetzt möglich einen Altitude Sensor zu verwenden. https://github.com/stephanflug/AltitudeSensor
+    -Ab der 3.5 Version ist es jetzt möglich einen Altitude Sensor zu verwenden.
 
 ## 🔧 Vorbereitung: 
 ```
