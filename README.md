@@ -26,6 +26,9 @@ Neu ab der Version 2.8.Ein fertiges Flugbuch Images.Einfach herunterladen und au
 <a href="https://github.com/stephanflug/digitales-Flugbuch/blob/main/Installation/Flugbuch%20Images/Anleitung_Flugbuch_Images.pdf
 " target="_blank">Anleitung</a>
 
+Ab Version 3.5 kann die Altitude-Sensor-Funktion direkt mit dem Flugbuch verwendet werden.Hierfür steht eine Anleitung zur Verfügung, die beschreibt, wie die Integration umgesetzt wird.<a href="https://github.com/stephanflug/digitales-Flugbuch/blob/main/Dokumentation/FlugBuch/RFID%20Flugbuch/Altitude%20Sensor%20beim%20Flugbuch%20einbindenV1.0.pdf
+" target="_blank">Anleitung</a>
+
 
 
 ## ⭐ Möglichkeiten: 
