@@ -44,6 +44,7 @@ Neu ab der Version 2.8.Ein fertiges Flugbuch Images.Einfach herunterladen und au
     -Backup und Restore
     -Viewer Dashboard für eine externen Anzeige via Browser
     -Zusätzliche ist es ab der V3.0 möglich via Rest-API Schnitstelle die Flugbuchdaten zu übermitteln
+    -Ab der 3.5 Version ist es jetzt möglich einen Altitude Sensor zu verwenden. https://github.com/stephanflug/AltitudeSensor
 
 ## 🔧 Vorbereitung: 
 ```
