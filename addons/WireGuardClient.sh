@@ -210,6 +210,19 @@ if ! sudo grep -qF "$SUDO_LINE" /etc/sudoers; then
   echo "$SUDO_LINE" | sudo tee -a /etc/sudoers > /dev/null
 fi
 
+# 6. WireGuard-Link zur index.html hinzufügen, falls noch nicht vorhanden
+INDEX_HTML="/var/www/html/index.html"
+LINK_CODE='<button type="button" onclick="window.location.href='\''wireguard.html'\''">WireGuard</button>'
+
+if ! grep -q "wireguard.html" "$INDEX_HTML"; then
+  echo "data: Füge WireGuard-Link zur index.html hinzu..."
+
+  # Direkt vor </div> der Button-Container einfügen
+  sudo sed -i "/<div class=\"button-container\">/,/<\/div>/ {
+    /<\/div>/ i \\        $LINK_CODE
+  }" "$INDEX_HTML"
+fi
+
 echo ""
 echo "data: Fertig! Öffne im Browser: http://<IP>/html/wireguard.html"
 echo ""
