@@ -13,7 +13,7 @@ echo ""
 
 # 1. WireGuard installieren
 sudo apt update
-sudo apt install -y wireguard
+sudo apt install -y wireguard resolvconf
 
 # 2. Konfiguration vorbereiten
 CONF_PATH="/opt/digitalflugbuch/data/DatenBuch/wg0.conf"
