@@ -15,17 +15,16 @@ echo ""
 sudo apt update
 sudo apt install -y wireguard
 
-# 2. Konfigurationsverzeichnis vorbereiten
+# 2. Konfiguration vorbereiten
 CONF_PATH="/opt/digitalflugbuch/data/DatenBuch/wg0.conf"
-
 if [ ! -f "$CONF_PATH" ]; then
-  echo "data: Leere WireGuard-Konfiguration wird erstellt..."
+  echo "data: Erstelle leere WireGuard-Konfiguration..."
   sudo touch "$CONF_PATH"
   sudo chmod 600 "$CONF_PATH"
 fi
 
-# 3. CGI-Skript erstellen
-CGI_SCRIPT="/var/www/cgi-bin/wireguard_control.sh"
+# 3. CGI-Skript speichern
+CGI_SCRIPT="/usr/lib/cgi-bin/wireguard_control.sh"
 sudo tee "$CGI_SCRIPT" > /dev/null << 'EOF'
 #!/bin/bash
 
@@ -40,7 +39,7 @@ ACTION=$(echo "$POST_DATA" | grep -oP '(?<=action=)[^&]*')
 NEW_CONF=$(echo "$POST_DATA" | grep -oP '(?<=config=).*' | sed 's/%0D%0A/\n/g' | sed 's/+/ /g' | sed 's/%3A/:/g' | sed 's/%2F/\//g')
 
 html_response() {
-  echo "<html><body><h2>$1</h2><a href=\"/wireguard.html\">Zur&uuml;ck</a></body></html>"
+  echo "<html><body><h2>$1</h2><a href=\"/html/wireguard.html\">Zur&uuml;ck</a></body></html>"
 }
 
 case "$ACTION" in
@@ -54,7 +53,7 @@ case "$ACTION" in
     if [ -n "$NEW_CONF" ]; then
       echo -e "$NEW_CONF" | sudo tee "$WG_CONF" > /dev/null
       sudo chmod 600 "$WG_CONF"
-      html_response "Konfiguration aktualisiert."
+      html_response "Konfiguration gespeichert."
     else
       html_response "Keine Konfigurationsdaten übermittelt."
     fi
@@ -67,8 +66,8 @@ EOF
 
 sudo chmod +x "$CGI_SCRIPT"
 
-# 4. HTML-Oberfläche erstellen
-HTML_PATH="/var/www/wireguard.html"
+# 4. HTML-Datei speichern
+HTML_PATH="/var/www/html/wireguard.html"
 sudo tee "$HTML_PATH" > /dev/null << 'EOF'
 <!DOCTYPE html>
 <html lang="de">
@@ -204,13 +203,13 @@ PersistentKeepalive = 25</textarea>
 </html>
 EOF
 
-# 5. www-data: wg-quick ohne Passwort erlauben
+# 5. www-data darf wg-quick ohne Passwort ausführen
 SUDO_LINE="www-data ALL=(ALL) NOPASSWD: /usr/bin/wg-quick"
 if ! sudo grep -qF "$SUDO_LINE" /etc/sudoers; then
-  echo "data: sudoers-Eintrag wird hinzugefügt..."
+  echo "data: Sudoers-Regel wird hinzugefügt..."
   echo "$SUDO_LINE" | sudo tee -a /etc/sudoers > /dev/null
 fi
 
 echo ""
-echo "data: Installation abgeschlossen. Öffne im Browser: http://<IP>/wireguard.html"
+echo "data: Fertig! Öffne im Browser: http://<IP>/html/wireguard.html"
 echo ""
