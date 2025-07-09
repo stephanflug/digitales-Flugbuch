@@ -8,7 +8,7 @@
     },
     {
       "datei": "sdcheck.sh",
-      "beschreibung": "Mit der Funktion kann man überprüfen,ob ein SD Karten Fehler vorliegt",
+      "beschreibung": "Mit der Funktion kann man überprüfen, ob ein SD Karten Fehler vorliegt",
       "version": "1.0",
       "autor": "Ebner Stephan"
     },
@@ -17,10 +17,16 @@
       "beschreibung": "Zeigt CPU-Last, RAM-Auslastung, SD-Kartenspeicherplatz & Temperatur an",
       "version": "1.0",
       "autor": "Ebner Stephan"
-     },
+    },
     {
       "datei": "updateSystem.sh",
-      "beschreibung": "Mit dieser Funktion wird ein Update des Betriebssystems durchgeführt. Wichtig: Je nach Alter des Systems kann der Vorgang mehrere Minuten dauern. Bitte darauf achten, dass im Dialogfeld die Meldung Installation abgeschlossen erscheint, bevor Sie den Vorgang beenden.Das Update hat keinen Einfluss auf die Flugbuch-Software.",
+      "beschreibung": "Mit dieser Funktion wird ein Update des Betriebssystems durchgeführt. Wichtig: Je nach Alter des Systems kann der Vorgang mehrere Minuten dauern. Bitte darauf achten, dass im Dialogfeld die Meldung Installation abgeschlossen erscheint, bevor Sie den Vorgang beenden. Das Update hat keinen Einfluss auf die Flugbuch-Software.",
+      "version": "1.0",
+      "autor": "Ebner Stephan"
+    },
+    {
+      "datei": "wireguard-client.sh",
+      "beschreibung": "Installiert und konfiguriert den WireGuard Client für eine sichere VPN-Verbindung.",
       "version": "1.0",
       "autor": "Ebner Stephan"
     }
