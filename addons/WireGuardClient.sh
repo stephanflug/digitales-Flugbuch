@@ -39,7 +39,7 @@ ACTION=$(echo "$POST_DATA" | grep -oP '(?<=action=)[^&]*')
 NEW_CONF=$(echo "$POST_DATA" | grep -oP '(?<=config=).*' | sed 's/%0D%0A/\n/g' | sed 's/+/ /g' | sed 's/%3A/:/g' | sed 's/%2F/\//g')
 
 html_response() {
-  echo "<html><body><h2>$1</h2><a href=\"/html/wireguard.html\">Zur&uuml;ck</a></body></html>"
+  echo "<html><body><h2>$1</h2><a href=\"/wireguard.html\">Zur&uuml;ck</a></body></html>"
 }
 
 case "$ACTION" in
