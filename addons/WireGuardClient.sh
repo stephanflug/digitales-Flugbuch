@@ -33,25 +33,45 @@ echo ""
 
 WG_CONF="/opt/digitalflugbuch/data/DatenBuch/wg0.conf"
 
+# 1) Roh die POST-Daten einlesen
 read -n "$CONTENT_LENGTH" POST_DATA
 
-ACTION=$(echo "$POST_DATA" | grep -oP '(?<=action=)[^&]*')
-NEW_CONF=$(echo "$POST_DATA" | grep -oP '(?<=config=).*' | sed 's/%0D%0A/\n/g' | sed 's/+/ /g' | sed 's/%3A/:/g' | sed 's/%2F/\//g')
+# 2) URL-decode-Funktion
+urldecode() {
+  local data="${1//+/ }"
+  printf '%b' "${data//%/\\x}"
+}
 
+# 3) Gesamte POST-Daten dekodieren
+DECODED=$(urldecode "$POST_DATA")
+
+# 4) Aktion extrahieren (start|stop|update)
+ACTION=$(echo "$DECODED" | grep -oP '(?<=action=)[^&]*')
+
+# 5) Konfig-Text extrahieren (alles nach "config=")
+#    Wenn Aktion != update, wird dieser Wert nicht verwendet.
+CONFIG_CONTENT="${DECODED#*config=}"
+
+# Hilfsfunktion für HTML-Antwort
 html_response() {
   echo "<html><body><h2>$1</h2><a href=\"/wireguard.html\">Zur&uuml;ck</a></body></html>"
 }
 
 case "$ACTION" in
   start)
-    sudo wg-quick up "$WG_CONF" > /dev/null 2>&1 && html_response "WireGuard aktiviert." || html_response "Fehler beim Starten von WireGuard."
+    sudo wg-quick up "$WG_CONF" > /dev/null 2>&1 \
+      && html_response "WireGuard aktiviert." \
+      || html_response "Fehler beim Starten von WireGuard."
     ;;
   stop)
-    sudo wg-quick down "$WG_CONF" > /dev/null 2>&1 && html_response "WireGuard deaktiviert." || html_response "Fehler beim Stoppen von WireGuard."
+    sudo wg-quick down "$WG_CONF" > /dev/null 2>&1 \
+      && html_response "WireGuard deaktiviert." \
+      || html_response "Fehler beim Stoppen von WireGuard."
     ;;
   update)
-    if [ -n "$NEW_CONF" ]; then
-      echo -e "$NEW_CONF" | sudo tee "$WG_CONF" > /dev/null
+    if [ -n "$CONFIG_CONTENT" ]; then
+      # 6) Dekodierten Inhalt in die wg0.conf schreiben
+      echo -e "$CONFIG_CONTENT" | sudo tee "$WG_CONF" > /dev/null
       sudo chmod 600 "$WG_CONF"
       html_response "Konfiguration gespeichert."
     else
@@ -62,6 +82,7 @@ case "$ACTION" in
     html_response "Unbekannte Aktion."
     ;;
 esac
+
 EOF
 
 sudo chmod +x "$CGI_SCRIPT"
