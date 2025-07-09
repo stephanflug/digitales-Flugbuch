@@ -32,43 +32,54 @@ echo ""
 
 WG_CONF="/opt/digitalflugbuch/data/DatenBuch/wg0.conf"
 
-# 1) Roh die POST-Daten einlesen
-read -n "$CONTENT_LENGTH" POST_DATA
+# 1) Lese die gesamte POST-Payload (unabhängig von $CONTENT_LENGTH)
+POST_DATA=$(cat)
 
-# 2) URL-decode-Funktion
+# 2) URL-Dekodierung
 urldecode() {
   local data="${1//+/ }"
   printf '%b' "${data//%/\\x}"
 }
 
-# 3) Gesamte POST-Daten dekodieren
 DECODED=$(urldecode "$POST_DATA")
 
-# 4) Aktion extrahieren (start|stop|update)
-ACTION=$(echo "$DECODED" | grep -oP '(?<=action=)[^&]*')
+# 3) Aktion extrahieren (start|stop|update)
+#    Wir nehmen alles zwischen "action=" und dem nächsten "&" (oder EOL).
+ACTION=$(printf '%s\n' "$DECODED" | sed -n 's/.*action=\([^&]*\).*/\1/p')
 
-# 5) Konfig-Text extrahieren (alles nach "config=")
-CONFIG_CONTENT="${DECODED#*config=}"
+# 4) Konfig-Text extrahieren (alles nach "config=")
+CONFIG_CONTENT=$(printf '%s\n' "$DECODED" | sed -n 's/.*config=\(.*\)/\1/p')
 
-# Hilfsfunktion für HTML-Antwort
 html_response() {
-  echo "<html><body><h2>$1</h2><a href=\"/wireguard.html\">Zur&uuml;ck zur Startseite</a></body></html>"
+  cat <<HTML
+<html>
+  <body>
+    <h2>$1</h2>
+    <a href="/wireguard.html">Zurück zur Startseite</a>
+  </body>
+</html>
+HTML
 }
 
 case "$ACTION" in
   start)
-    sudo wg-quick up "$WG_CONF" &>/dev/null \
-      && html_response "WireGuard aktiviert." \
-      || html_response "Fehler beim Starten von WireGuard."
+    if sudo wg-quick up "$WG_CONF" >/dev/null 2>&1; then
+      html_response "WireGuard aktiviert."
+    else
+      html_response "Fehler beim Starten von WireGuard."
+    fi
     ;;
   stop)
-    sudo wg-quick down "$WG_CONF" &>/dev/null \
-      && html_response "WireGuard deaktiviert." \
-      || html_response "Fehler beim Stoppen von WireGuard."
+    if sudo wg-quick down "$WG_CONF" >/dev/null 2>&1; then
+      html_response "WireGuard deaktiviert."
+    else
+      html_response "Fehler beim Stoppen von WireGuard."
+    fi
     ;;
   update)
     if [ -n "$CONFIG_CONTENT" ]; then
-      echo -e "$CONFIG_CONTENT" | sudo tee "$WG_CONF" &>/dev/null
+      # 5) Schreibe die Konfiguration
+      printf '%s\n' "$CONFIG_CONTENT" | sudo tee "$WG_CONF" >/dev/null
       sudo chmod 600 "$WG_CONF"
       html_response "Konfiguration gespeichert."
     else
@@ -76,7 +87,7 @@ case "$ACTION" in
     fi
     ;;
   *)
-    html_response "Unbekannte Aktion."
+    html_response "Unbekannte Aktion: '$ACTION'."
     ;;
 esac
 EOF
