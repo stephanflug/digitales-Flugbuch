@@ -25,7 +25,7 @@
       "autor": "Ebner Stephan"
     },
     {
-      "datei": "wireguard-client.sh",
+      "datei": "WireGuardClient.sh",
       "beschreibung": "Installiert und konfiguriert den WireGuard Client für eine sichere VPN-Verbindung.",
       "version": "1.0",
       "autor": "Ebner Stephan"
