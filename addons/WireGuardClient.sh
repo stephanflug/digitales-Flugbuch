@@ -32,7 +32,7 @@ echo ""
 
 WG_CONF="/opt/digitalflugbuch/data/DatenBuch/wg0.conf"
 
-# 1) Lese die gesamte POST-Payload (unabhängig von $CONTENT_LENGTH)
+# 1) Lese die gesamte POST-Payload
 POST_DATA=$(cat)
 
 # 2) URL-Dekodierung
@@ -44,17 +44,18 @@ urldecode() {
 DECODED=$(urldecode "$POST_DATA")
 
 # 3) Aktion extrahieren (start|stop|update)
-#    Wir nehmen alles zwischen "action=" und dem nächsten "&" (oder EOL).
 ACTION=$(printf '%s\n' "$DECODED" | sed -n 's/.*action=\([^&]*\).*/\1/p')
 
 # 4) Konfig-Text extrahieren (alles nach "config=")
 CONFIG_CONTENT=$(printf '%s\n' "$DECODED" | sed -n 's/.*config=\(.*\)/\1/p')
 
+# Hilfsfunktion für HTML-Antwort mit Debug-Ausgabe
 html_response() {
   cat <<HTML
 <html>
   <body>
     <h2>$1</h2>
+    <pre style="background:#f0f0f0;padding:10px;border-radius:4px;">$2</pre>
     <a href="/wireguard.html">Zurück zur Startseite</a>
   </body>
 </html>
@@ -63,31 +64,35 @@ HTML
 
 case "$ACTION" in
   start)
-    if sudo wg-quick up "$WG_CONF" >/dev/null 2>&1; then
-      html_response "WireGuard aktiviert."
+    # Führe wg-quick mit voller Ausgabe aus
+    OUTPUT=$(sudo wg-quick up "$WG_CONF" 2>&1)
+    RET=$?
+    if [ $RET -eq 0 ]; then
+      html_response "WireGuard aktiviert." "$OUTPUT"
     else
-      html_response "Fehler beim Starten von WireGuard."
+      html_response "Fehler beim Starten von WireGuard (Code $RET):" "$OUTPUT"
     fi
     ;;
   stop)
-    if sudo wg-quick down "$WG_CONF" >/dev/null 2>&1; then
-      html_response "WireGuard deaktiviert."
+    OUTPUT=$(sudo wg-quick down "$WG_CONF" 2>&1)
+    RET=$?
+    if [ $RET -eq 0 ]; then
+      html_response "WireGuard deaktiviert." "$OUTPUT"
     else
-      html_response "Fehler beim Stoppen von WireGuard."
+      html_response "Fehler beim Stoppen von WireGuard (Code $RET):" "$OUTPUT"
     fi
     ;;
   update)
     if [ -n "$CONFIG_CONTENT" ]; then
-      # 5) Schreibe die Konfiguration
-      printf '%s\n' "$CONFIG_CONTENT" | sudo tee "$WG_CONF" >/dev/null
+      OUTPUT=$(printf '%s\n' "$CONFIG_CONTENT" | sudo tee "$WG_CONF" 2>&1)
       sudo chmod 600 "$WG_CONF"
-      html_response "Konfiguration gespeichert."
+      html_response "Konfiguration gespeichert." "$OUTPUT"
     else
-      html_response "Keine Konfigurationsdaten übermittelt."
+      html_response "Keine Konfigurationsdaten übermittelt." ""
     fi
     ;;
   *)
-    html_response "Unbekannte Aktion: '$ACTION'."
+    html_response "Unbekannte Aktion: '$ACTION'." ""
     ;;
 esac
 EOF
