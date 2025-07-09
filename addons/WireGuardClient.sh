@@ -18,7 +18,7 @@ echo ""
 apt update -y && echo "data: Paketliste erfolgreich aktualisiert." || echo "data: Fehler beim Aktualisieren der Paketliste."
 echo ""
 
-# Schritt 2: WireGuard installieren (Client = nur wg & wg-quick benötigt)
+# Schritt 2: WireGuard-Tools installieren
 echo "data: Installiere WireGuard-Client-Komponenten..."
 echo ""
 apt install -y wireguard-tools resolvconf && echo "data: WireGuard-Client installiert." || echo "data: Fehler bei der Installation."
@@ -32,14 +32,13 @@ else
 fi
 echo ""
 
-# Schritt 4: Vorlage für Client-Konfig (optional)
-WG_CONF="/etc/wireguard/wg0.conf"
+# Schritt 4: Konfiguration speichern im gewünschten Ordner
+WG_CONF="/opt/digitalflugbuch/data/DatenBuch/wg0.conf"
 
 if [ ! -f "$WG_CONF" ]; then
-    echo "data: Erstelle Beispielkonfiguration wg0.conf..."
+    echo "data: Erstelle Beispielkonfiguration wg0.conf in /opt/digitalflugbuch/data/DatenBuch/ ..."
     echo ""
 
-    mkdir -p /etc/wireguard
     cat <<EOF > "$WG_CONF"
 [Interface]
 PrivateKey = <CLIENT_PRIVATE_KEY>
@@ -54,9 +53,9 @@ PersistentKeepalive = 25
 EOF
 
     chmod 600 "$WG_CONF"
-    echo "data: Beispielkonfiguration erstellt unter /etc/wireguard/wg0.conf"
+    echo "data: Konfigurationsdatei gespeichert unter: $WG_CONF"
 else
-    echo "data: Konfiguration bereits vorhanden – übersprungen."
+    echo "data: Konfigurationsdatei existiert bereits – übersprungen."
 fi
 echo ""
 
