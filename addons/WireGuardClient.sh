@@ -23,11 +23,10 @@ if [ ! -f "$CONF_PATH" ]; then
   sudo chmod 600 "$CONF_PATH"
 fi
 
-# 3. CGI-Skript speichern
+# 3. CGI-Skript: control
 CGI_SCRIPT="/usr/lib/cgi-bin/wireguard_control.sh"
 sudo tee "$CGI_SCRIPT" > /dev/null << 'EOF'
 #!/bin/bash
-
 echo "Content-type: text/html"
 echo ""
 
@@ -49,29 +48,27 @@ DECODED=$(urldecode "$POST_DATA")
 ACTION=$(echo "$DECODED" | grep -oP '(?<=action=)[^&]*')
 
 # 5) Konfig-Text extrahieren (alles nach "config=")
-#    Wenn Aktion != update, wird dieser Wert nicht verwendet.
 CONFIG_CONTENT="${DECODED#*config=}"
 
 # Hilfsfunktion für HTML-Antwort
 html_response() {
-  echo "<html><body><h2>$1</h2><a href=\"/wireguard.html\">Zur&uuml;ck</a></body></html>"
+  echo "<html><body><h2>$1</h2><a href=\"/wireguard.html\">Zur&uuml;ck zur Startseite</a></body></html>"
 }
 
 case "$ACTION" in
   start)
-    sudo wg-quick up "$WG_CONF" > /dev/null 2>&1 \
+    sudo wg-quick up "$WG_CONF" &>/dev/null \
       && html_response "WireGuard aktiviert." \
       || html_response "Fehler beim Starten von WireGuard."
     ;;
   stop)
-    sudo wg-quick down "$WG_CONF" > /dev/null 2>&1 \
+    sudo wg-quick down "$WG_CONF" &>/dev/null \
       && html_response "WireGuard deaktiviert." \
       || html_response "Fehler beim Stoppen von WireGuard."
     ;;
   update)
     if [ -n "$CONFIG_CONTENT" ]; then
-      # 6) Dekodierten Inhalt in die wg0.conf schreiben
-      echo -e "$CONFIG_CONTENT" | sudo tee "$WG_CONF" > /dev/null
+      echo -e "$CONFIG_CONTENT" | sudo tee "$WG_CONF" &>/dev/null
       sudo chmod 600 "$WG_CONF"
       html_response "Konfiguration gespeichert."
     else
@@ -82,12 +79,20 @@ case "$ACTION" in
     html_response "Unbekannte Aktion."
     ;;
 esac
-
 EOF
-
 sudo chmod +x "$CGI_SCRIPT"
 
-# 4. HTML-Datei speichern
+# 4. CGI-Skript: get current config
+GET_CONF="/usr/lib/cgi-bin/get_wg_conf.sh"
+sudo tee "$GET_CONF" > /dev/null << 'EOF'
+#!/bin/bash
+echo "Content-type: text/plain"
+echo ""
+cat /opt/digitalflugbuch/data/DatenBuch/wg0.conf
+EOF
+sudo chmod +x "$GET_CONF"
+
+# 5. HTML-Datei speichern
 HTML_PATH="/var/www/html/wireguard.html"
 sudo tee "$HTML_PATH" > /dev/null << 'EOF'
 <!DOCTYPE html>
@@ -199,17 +204,7 @@ sudo tee "$HTML_PATH" > /dev/null << 'EOF'
 
     <form method="post" action="/cgi-bin/wireguard_control.sh">
       <h2>Konfiguration bearbeiten</h2>
-      <textarea name="config" placeholder="[Interface] ...">[Interface]
-PrivateKey = <CLIENT_PRIVATE_KEY>
-Address = 10.0.0.2/24
-DNS = 1.1.1.1
-
-[Peer]
-PublicKey = <SERVER_PUBLIC_KEY>
-Endpoint = <SERVER_IP>:51820
-AllowedIPs = 0.0.0.0/0
-PersistentKeepalive = 25</textarea>
-      <br>
+      <textarea name="config" placeholder="[Interface] …"></textarea><br>
       <button type="submit" name="action" value="update">Konfiguration speichern</button>
     </form>
 
@@ -220,30 +215,36 @@ PersistentKeepalive = 25</textarea>
       <p>Dieses Projekt steht unter der <a href="https://github.com/stephanflug/digitales-Flugbuch/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">MIT-Lizenz</a>.</p>
     </div>
   </div>
+
+  <script>
+    window.addEventListener('DOMContentLoaded', () => {
+      fetch('/cgi-bin/get_wg_conf.sh')
+        .then(r => r.ok ? r.text() : Promise.reject(r.statusText))
+        .then(cfg => document.querySelector('textarea[name="config"]').value = cfg)
+        .catch(err => console.error('Konfig nicht geladen:', err));
+    });
+  </script>
 </body>
 </html>
 EOF
 
-# 5. www-data darf wg-quick ohne Passwort ausführen
+# 6. www-data darf wg-quick ohne Passwort ausführen
 SUDO_LINE="www-data ALL=(ALL) NOPASSWD: /usr/bin/wg-quick"
 if ! sudo grep -qF "$SUDO_LINE" /etc/sudoers; then
   echo "data: Sudoers-Regel wird hinzugefügt..."
   echo "$SUDO_LINE" | sudo tee -a /etc/sudoers > /dev/null
 fi
 
-# 6. WireGuard-Link zur index.html hinzufügen, falls noch nicht vorhanden
+# 7. WireGuard-Link zur index.html hinzufügen, falls noch nicht vorhanden
 INDEX_HTML="/var/www/html/index.html"
-LINK_CODE='<button type="button" onclick="window.location.href='\''wireguard.html'\''">WireGuard</button>'
-
+LINK='<button type="button" onclick="window.location.href='\''wireguard.html'\''">WireGuard</button>'
 if ! grep -q "wireguard.html" "$INDEX_HTML"; then
   echo "data: Füge WireGuard-Link zur index.html hinzu..."
-
-  # Direkt vor </div> der Button-Container einfügen
   sudo sed -i "/<div class=\"button-container\">/,/<\/div>/ {
-    /<\/div>/ i \\        $LINK_CODE
+    /<\/div>/ i \\        $LINK
   }" "$INDEX_HTML"
 fi
 
 echo ""
-echo "data: Fertig! Öffne im Browser: http://<IP>/html/wireguard.html"
+echo "data: Fertig! Öffne im Browser: http://<IP>/wireguard.html"
 echo ""
