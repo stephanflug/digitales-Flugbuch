@@ -45,7 +45,7 @@ urldecode() {
 # Funktion zur Parameter-Extraktion + Dekodierung
 parse_param() {
   local key="$1"
-  echo "$POST_DATA" | tr '&' '\n' | grep "^$key=" | cut -d= -f2- | urldecode
+  echo "$POST_DATA" | tr '&' '\n' | grep -m1 "^$key=" | cut -d= -f2- | urldecode
 }
 
 ACTION=$(parse_param "action")
