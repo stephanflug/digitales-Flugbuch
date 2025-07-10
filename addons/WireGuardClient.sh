@@ -6,7 +6,7 @@ echo "Connection: keep-alive"
 echo ""
 
 exec 2>&1
-set -ex  # Fehler abbrechen und Debug-Ausgabe aktivieren
+set -x
 
 echo "data: Starte Installation von WireGuard..."
 echo ""
@@ -20,11 +20,10 @@ CONF_PATH="/opt/digitalflugbuch/data/DatenBuch/wg0.conf"
 if [ ! -f "$CONF_PATH" ]; then
   echo "data: Erstelle leere WireGuard-Konfiguration..."
   sudo touch "$CONF_PATH"
-  sudo chown www-data:www-data "$CONF_PATH"
-  sudo chmod 660 "$CONF_PATH"  # Nicht 666 aus Sicherheitsgründen
+  sudo chmod 600 "$CONF_PATH"
 fi
 
-# 3. CGI-Skript: wireguard_control.sh
+# 3. CGI-Skript: control
 CGI_SCRIPT="/usr/lib/cgi-bin/wireguard_control.sh"
 sudo tee "$CGI_SCRIPT" > /dev/null << 'EOF'
 #!/bin/bash
@@ -33,27 +32,24 @@ echo ""
 
 WG_CONF="/opt/digitalflugbuch/data/DatenBuch/wg0.conf"
 
-if [ "$REQUEST_METHOD" = "POST" ]; then
-  POST_DATA=$(cat)
-else
-  POST_DATA=""
-fi
+# 1) Lese die gesamte POST-Payload
+POST_DATA=$(cat)
 
-# URL-Dekodierung
+# 2) URL-Dekodierung
 urldecode() {
   local data="${1//+/ }"
   printf '%b' "${data//%/\\x}"
 }
 
-# Parameter aus POST-Daten extrahieren
-parse_param() {
-  local key="$1"
-  echo "$POST_DATA" | tr '&' '\n' | grep -m1 "^$key=" | cut -d= -f2- | urldecode
-}
+DECODED=$(urldecode "$POST_DATA")
 
-ACTION=$(parse_param "action")
-CONFIG_CONTENT=$(parse_param "config")
+# 3) Aktion extrahieren (start|stop|update)
+ACTION=$(printf '%s\n' "$DECODED" | sed -n 's/.*action=\([^&]*\).*/\1/p')
 
+# 4) Konfig-Text extrahieren (alles nach "config=")
+CONFIG_CONTENT=$(printf '%s\n' "$DECODED" | sed -n 's/.*config=\(.*\)/\1/p')
+
+# Hilfsfunktion für HTML-Antwort mit Debug-Ausgabe
 html_response() {
   cat <<HTML
 <html>
@@ -68,7 +64,8 @@ HTML
 
 case "$ACTION" in
   start)
-    OUTPUT=$(sudo /usr/bin/wg-quick up "$WG_CONF" 2>&1)
+    # Führe wg-quick mit voller Ausgabe aus
+    OUTPUT=$(sudo wg-quick up "$WG_CONF" 2>&1)
     RET=$?
     if [ $RET -eq 0 ]; then
       html_response "WireGuard aktiviert." "$OUTPUT"
@@ -77,7 +74,7 @@ case "$ACTION" in
     fi
     ;;
   stop)
-    OUTPUT=$(sudo /usr/bin/wg-quick down "$WG_CONF" 2>&1)
+    OUTPUT=$(sudo wg-quick down "$WG_CONF" 2>&1)
     RET=$?
     if [ $RET -eq 0 ]; then
       html_response "WireGuard deaktiviert." "$OUTPUT"
@@ -87,9 +84,9 @@ case "$ACTION" in
     ;;
   update)
     if [ -n "$CONFIG_CONTENT" ]; then
-      echo "$CONFIG_CONTENT" | sudo tee "$WG_CONF" > /dev/null
+      OUTPUT=$(printf '%s\n' "$CONFIG_CONTENT" | sudo tee "$WG_CONF" 2>&1)
       sudo chmod 600 "$WG_CONF"
-      html_response "Konfiguration gespeichert." "Datei $WG_CONF wurde aktualisiert."
+      html_response "Konfiguration gespeichert." "$OUTPUT"
     else
       html_response "Keine Konfigurationsdaten übermittelt." ""
     fi
@@ -101,7 +98,7 @@ esac
 EOF
 sudo chmod +x "$CGI_SCRIPT"
 
-# 4. CGI-Skript: get_wg_conf.sh
+# 4. CGI-Skript: get current config
 GET_CONF="/usr/lib/cgi-bin/get_wg_conf.sh"
 sudo tee "$GET_CONF" > /dev/null << 'EOF'
 #!/bin/bash
@@ -251,7 +248,7 @@ EOF
 SUDO_LINE="www-data ALL=(ALL) NOPASSWD: /usr/bin/wg-quick"
 if ! sudo grep -qF "$SUDO_LINE" /etc/sudoers; then
   echo "data: Sudoers-Regel wird hinzugefügt..."
-  echo "$SUDO_LINE" | sudo EDITOR='tee -a' visudo > /dev/null
+  echo "$SUDO_LINE" | sudo tee -a /etc/sudoers > /dev/null
 fi
 
 # 7. WireGuard-Link zur index.html hinzufügen, falls noch nicht vorhanden
@@ -259,8 +256,9 @@ INDEX_HTML="/var/www/html/index.html"
 LINK='<button type="button" onclick="window.location.href='\''wireguard.html'\''">WireGuard</button>'
 if ! grep -q "wireguard.html" "$INDEX_HTML"; then
   echo "data: Füge WireGuard-Link zur index.html hinzu..."
-  sudo sed -i '/<div class="button-container">/a \
-        '"$LINK" "$INDEX_HTML"
+  sudo sed -i "/<div class=\"button-container\">/,/<\/div>/ {
+    /<\/div>/ i \\        $LINK
+  }" "$INDEX_HTML"
 fi
 
 echo ""
