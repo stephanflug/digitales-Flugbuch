@@ -49,7 +49,7 @@ DECODED=$(urldecode "$POST_DATA")
 ACTION=$(printf '%s\n' "$DECODED" | sed -n 's/.*action=\([^&]*\).*/\1/p')
 
 # 4) Konfig-Text extrahieren (alles nach "config=")
-CONFIG_CONTENT=$(printf '%s\n' "$DECODED" | sed -n 's/.*config=\([^&]*\).*/\1/p')
+CONFIG_CONTENT=$(printf '%s\n' "$DECODED" | sed -n 's/.*config=\(.*\)/\1/p')
 CONFIG_CONTENT=$(urldecode "$CONFIG_CONTENT")
 
 
