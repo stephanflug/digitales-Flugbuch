@@ -86,7 +86,7 @@ case "$ACTION" in
   update)
     if [ -n "$CONFIG_CONTENT" ]; then
       OUTPUT=$(printf '%s\n' "$CONFIG_CONTENT" | sudo tee "$WG_CONF" 2>&1)
-      sudo chmod 600 "$WG_CONF"
+      sudo chmod 666 "$WG_CONF"
       html_response "Konfiguration gespeichert." "$OUTPUT"
     else
       html_response "Keine Konfigurationsdaten übermittelt." ""
