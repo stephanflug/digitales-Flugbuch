@@ -48,9 +48,12 @@ DECODED=$(urldecode "$POST_DATA")
 ACTION=$(printf '%s\n' "$DECODED" | sed -n 's/.*action=\([^&]*\).*/\1/p')
 
 # 4) Konfig-Text extrahieren (alles nach "config=")
-CONFIG_CONTENT=$(printf '%s\n' "$DECODED" | sed -n 's/.*config=\(.*\)/\1/p')
+CONFIG_CONTENT="${DECODED#*config=}"
+# Entferne eventuell angehängtes &action=...
+CONFIG_CONTENT="${CONFIG_CONTENT%%&action=*}"
 
-# Hilfsfunktion für HTML-Antwort mit Debug-Ausgabe
+
+# Hilfsfunktion fÃ¼r HTML-Antwort mit Debug-Ausgabe
 html_response() {
   cat <<HTML
 <html>
@@ -65,7 +68,7 @@ HTML
 
 case "$ACTION" in
   start)
-    # Führe wg-quick mit voller Ausgabe aus
+    # FÃ¼hre wg-quick mit voller Ausgabe aus
     OUTPUT=$(sudo wg-quick up "$WG_CONF" 2>&1)
     RET=$?
     if [ $RET -eq 0 ]; then
@@ -89,7 +92,7 @@ case "$ACTION" in
       sudo chmod 666 "$WG_CONF"
       html_response "Konfiguration gespeichert." "$OUTPUT"
     else
-      html_response "Keine Konfigurationsdaten übermittelt." ""
+      html_response "Keine Konfigurationsdaten Ã¼bermittelt." ""
     fi
     ;;
   *)
