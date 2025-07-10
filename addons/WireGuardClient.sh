@@ -20,7 +20,7 @@ CONF_PATH="/opt/digitalflugbuch/data/DatenBuch/wg0.conf"
 if [ ! -f "$CONF_PATH" ]; then
   echo "data: Erstelle leere WireGuard-Konfiguration..."
   sudo touch "$CONF_PATH"
-  sudo chmod 600 "$CONF_PATH"
+  sudo chmod 666 "$CONF_PATH"
 fi
 
 # 3. CGI-Skript: control
