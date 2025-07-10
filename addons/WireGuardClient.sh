@@ -57,7 +57,7 @@ html_response() {
   <body>
     <h2>$1</h2>
     <pre style="background:#f0f0f0;padding:10px;border-radius:4px;">$2</pre>
-    <a href="/wireguard.html">Zurück zur Startseite</a>
+    <a href="/wireguard.html">Zur&uuml;ck zur Startseite</a>
   </body>
 </html>
 HTML
