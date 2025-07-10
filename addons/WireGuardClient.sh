@@ -34,23 +34,23 @@ echo ""
 
 WG_CONF="/opt/digitalflugbuch/data/DatenBuch/wg0.conf"
 
-# 1) Lese die gesamte POST-Payload
 POST_DATA=$(cat)
 
-# 2) URL-Dekodierung
+# Funktion zur URL-Dekodierung
 urldecode() {
   local data="${1//+/ }"
   printf '%b' "${data//%/\\x}"
 }
 
-DECODED=$(urldecode "$POST_DATA")
+# Funktion zur Parameter-Extraktion + Dekodierung
+parse_param() {
+  local key="$1"
+  echo "$POST_DATA" | tr '&' '\n' | grep "^$key=" | cut -d= -f2- | urldecode
+}
 
-# 3) Aktion extrahieren (start|stop|update)
-ACTION=$(printf '%s\n' "$DECODED" | sed -n 's/.*action=\([^&]*\).*/\1/p')
+ACTION=$(parse_param "action")
+CONFIG_CONTENT=$(parse_param "config")
 
-# 4) Konfig-Text extrahieren (alles nach "config=")
-CONFIG_CONTENT=$(printf '%s\n' "$DECODED" | sed -n 's/.*config=\([^&]*\).*/\1/p')
-CONFIG_CONTENT=$(urldecode "$CONFIG_CONTENT")
 
 
 # Hilfsfunktion für HTML-Antwort mit Debug-Ausgabe
