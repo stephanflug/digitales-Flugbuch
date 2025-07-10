@@ -217,6 +217,11 @@ sudo tee "$HTML_PATH" > /dev/null << 'EOF'
   <div class="container">
     <h1>WireGuard Client Steuerung</h1>
 
+    <div style="background-color: #fff3cd; border: 1px solid #ffeeba; padding: 15px; border-radius: 5px; color: #856404; margin-bottom: 20px;">
+        <strong>Hinweis:</strong> Der Dienst wird <strong>nicht automatisch gestartet</strong>.  
+        Um die VPN-Verbindung zu aktivieren, muss die Verbindung manuell gestartet werden.
+    </div>
+
     <form method="post" action="/cgi-bin/wireguard_control.sh">
       <button type="submit" name="action" value="start">Verbindung aktivieren</button>
       <button type="submit" name="action" value="stop">Verbindung deaktivieren</button>
