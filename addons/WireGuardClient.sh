@@ -21,7 +21,7 @@ if [ ! -f "$CONF_PATH" ]; then
   echo "data: Erstelle leere WireGuard-Konfiguration..."
   sudo touch "$CONF_PATH"
   sudo chown www-data:www-data "$CONF_PATH"
-  sudo chmod 660 "$CONF_PATH"
+  sudo chmod 666 "$CONF_PATH"
 fi
 
 # 3. CGI-Skript: control
