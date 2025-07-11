@@ -22,7 +22,7 @@ Bei Fragen können Sie mich gerne per E-Mail erreichen:
 - ⌨️ Falls der Benutzer nicht in der Benutzerdatei existiert, wird eine Fehlermeldung ausgegeben.
 
 ## ⭐ NEU!
-Neu ab der Version 2.8.Ein fertiges Flugbuch Images.Einfach herunterladen und auf die SD-Karte speichern. Achte dabei unbedingt auf die Installationsanleitung!
+Neu!!Ein fertiges Flugbuch Basic Images.Einfach herunterladen und auf die SD-Karte speichern. Achte dabei unbedingt auf die Installationsanleitung!
 <a href="https://github.com/stephanflug/digitales-Flugbuch/blob/main/Installation/Flugbuch%20Images/Anleitung_Flugbuch_Images.pdf
 " target="_blank">Anleitung</a>
 
