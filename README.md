@@ -80,6 +80,7 @@ Wenn Sie das fertige Image nicht verwenden möchten, können Sie die Software au
 - **Betriebssystem:** Vorinstalliertes Linux auf der SD-Karte  
   - **Empfohlen:** Raspberry Pi OS Lite oder Raspberry Pi OS Desktop  
   - **Alternativen:** Ubuntu MATE, DietPi, Arch Linux (sofern kompatibel mit Raspberry Pi)
+  -  Speichermedium (SD-Karte) Hochwertige SD-Karte (z. B. SanDisk High Endurance oder Samsung Pro Endurance).
 
 ### 📦 Vorbereitung
 
