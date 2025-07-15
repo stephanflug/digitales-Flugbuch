@@ -33,7 +33,7 @@ Ab Version 3.5 kann die Altitude-Sensor-Funktion direkt mit dem Flugbuch verwend
 
 - Die Funktion erfordert die Installation eines zusätzlichen Addons für WireGuard VPN.
 - Nach der Installation geben Sie Ihre eigene WireGuard VPN-Server-Konfiguration ein.
-- Alternativ können Sie den kostenlosen Dienst von [ipv64.de](https://ipv64.de) verwenden.
+- Alternativ können Sie den kostenlosen Dienst von [ipv64.net](https://ipv64.net) verwenden.
 - Im Fehlerfall können Sie dem Support Ihre VPN-Konfiguration bereitstellen, sodass dieser direkt auf das Flugbuch zugreifen und Sie gezielt unterstützen kann.
 
 ### So funktioniert's:
