@@ -29,6 +29,24 @@ Neu!!Ein fertiges Flugbuch Basic Images.Einfach herunterladen und auf die SD-Kar
 Ab Version 3.5 kann die Altitude-Sensor-Funktion direkt mit dem Flugbuch verwendet werden.Hierfür steht eine Anleitung zur Verfügung, die beschreibt, wie die Integration umgesetzt wird.<a href="https://github.com/stephanflug/digitales-Flugbuch/blob/main/Dokumentation/FlugBuch/RFID%20Flugbuch/Altitude%20Sensor%20beim%20Flugbuch%20einbindenV1.0.pdf
 " target="_blank">Anleitung</a>
 
+##  Externer Zugriff via WireGuard VPN
+
+- Die Funktion erfordert die Installation eines zusätzlichen Addons für WireGuard VPN.
+- Nach der Installation geben Sie Ihre eigene WireGuard VPN-Server-Konfiguration ein.
+- Alternativ können Sie den kostenlosen Dienst von [ipv64.de](https://ipv64.de) verwenden.
+- Im Fehlerfall können Sie dem Support Ihre VPN-Konfiguration bereitstellen, sodass dieser direkt auf das Flugbuch zugreifen und Sie gezielt unterstützen kann.
+
+### So funktioniert's:
+
+1. Addon für WireGuard VPN installieren.
+2. Eigene WireGuard-Konfiguration eingeben (oder vpn64.de nutzen).
+3. Verbindung aufbauen und das Flugbuch wie gewohnt verwalten.
+
+---
+
+> **Hinweis:** Mit WireGuard VPN wird der Zugriff auf das Flugbuch so sicher und komfortabel wie ein lokaler Zugriff im Verein.
+
+
 
 
 ## ⭐ Möglichkeiten: 
