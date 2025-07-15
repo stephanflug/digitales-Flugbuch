@@ -71,7 +71,7 @@ Ab Version 3.5 kann die Altitude-Sensor-Funktion direkt mit dem Flugbuch verwend
 ## 🔧 Vorbereitung: 
 ```
 Benötigte Hardware
-- ✅ Raspberry Pi 3 oder höher oder Raspberry Pi 2 Zero
+- ✅ Raspberry Pi 3 oder höher oder Raspberry Pi 2 Zero. Vereine über 30 User sollten auf einen Pi 4 verwenden.
 - ✅ Speicherkarte (microSD) Kapazität: Mindestens 16 GB, idealerweise 32 GB oder mehr.
 - ✅ Ein stabiles und ausreichend starkes Netzteil.
 - ✅ Ein Gehäuse 
