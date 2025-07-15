@@ -233,6 +233,10 @@ Startseite url:http://<IPAdresse>:1880/home
     <img src="https://img.youtube.com/vi/nOOInCLnYMw/hqdefault.jpg" alt="YouTube Video" width="320">
 </a>
 
+<a href="https://youtube.com/shorts/AbHP6MEdS38" target="_blank" rel="noopener noreferrer">
+    <img src="https://img.youtube.com/vi/AbHP6MEdS38/hqdefault.jpg" alt="YouTube Video" width="320">
+</a>
+
 
 
 
