@@ -211,7 +211,6 @@ sudo tee "$HTML_PATH" > /dev/null << 'EOF'
     </form>
 
     <a href="index.html" class="back-to-home">Zur&uuml;ck zur Startseite</a>
-  </div>
 
    <div class="footer-note">Powered by Ebner Stephan</div>
     <div class="license-info">
