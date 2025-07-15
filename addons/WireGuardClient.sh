@@ -150,6 +150,18 @@ sudo tee "$HTML_PATH" > /dev/null << 'EOF'
     form {
       margin: 15px 0;
     }
+    .footer-note, .license-info {
+  margin-top: 20px;
+  font-size: 14px;
+  color: #666;
+}
+.license-info a {
+  color: #4CAF50;
+  text-decoration: none;
+}
+.license-info a:hover {
+  text-decoration: underline;
+}
     button {
       background-color: #4CAF50;
       color: white;
@@ -199,6 +211,12 @@ sudo tee "$HTML_PATH" > /dev/null << 'EOF'
     </form>
 
     <a href="index.html" class="back-to-home">Zur&uuml;ck zur Startseite</a>
+  </div>
+
+   <div class="footer-note">Powered by Ebner Stephan</div>
+    <div class="license-info">
+      <p>Dieses Projekt steht unter der <a href="https://github.com/stephanflug/digitales-Flugbuch/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">MIT-Lizenz</a>.</p>
+    </div>
   </div>
 
   <script>
