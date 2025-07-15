@@ -29,6 +29,12 @@
       "beschreibung": "Installiert und konfiguriert den WireGuard Client für eine sichere VPN-Verbindung.Nach erfolgreicher Installation wird auf der Startseite ein zusätzliches Button angezeigt, über das die Konfiguration vorgenommen werden kann.Wichtig: Je nach Alter des Systems kann der Vorgang mehrere Minuten dauern. Bitte darauf achten, dass im Dialogfeld die Meldung Installation abgeschlossen erscheint, bevor Sie den Vorgang beenden.",
       "version": "1.0",
       "autor": "Ebner Stephan"
+    },
+    {
+      "datei": "uninstall_WireGuardClient.sh",
+      "beschreibung": "Deinstalliert den WireGuard Client vollständig, entfernt alle zugehörigen Dateien, Dienste und Berechtigungen und löscht sich anschließend selbst.",
+      "version": "1.0",
+      "autor": "Ebner Stephan"
     }
   ]
 }
