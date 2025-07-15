@@ -19,6 +19,7 @@ sudo apt install -y wireguard resolvconf
 CONF_PATH="/opt/digitalflugbuch/data/DatenBuch/wg0.conf"
 if [ ! -f "$CONF_PATH" ]; then
   echo "data: Erstelle leere WireGuard-Konfiguration..."
+  sudo mkdir -p "$(dirname "$CONF_PATH")"
   sudo touch "$CONF_PATH"
   sudo chown www-data:www-data "$CONF_PATH"
   sudo chmod 666 "$CONF_PATH"
@@ -32,28 +33,18 @@ echo "Content-type: text/html"
 echo ""
 
 WG_CONF="/opt/digitalflugbuch/data/DatenBuch/wg0.conf"
-
-# 1) Lese die gesamte POST-Payload
 POST_DATA=$(cat)
 
-# 2) URL-Dekodierung
 urldecode() {
   local data="${1//+/ }"
   printf '%b' "${data//%/\\x}"
 }
 
 DECODED=$(urldecode "$POST_DATA")
-
-# 3) Aktion extrahieren (start|stop|update)
 ACTION=$(printf '%s\n' "$DECODED" | sed -n 's/.*action=\([^&]*\).*/\1/p')
-
-# 4) Konfig-Text extrahieren (alles nach "config=")
 CONFIG_CONTENT="${DECODED#*config=}"
-# Entferne eventuell angehängtes &action=...
 CONFIG_CONTENT="${CONFIG_CONTENT%%&action=*}"
 
-
-# Hilfsfunktion fÃ¼r HTML-Antwort mit Debug-Ausgabe
 html_response() {
   cat <<HTML
 <html>
@@ -68,7 +59,6 @@ HTML
 
 case "$ACTION" in
   start)
-    # FÃ¼hre wg-quick mit voller Ausgabe aus
     OUTPUT=$(sudo wg-quick up "$WG_CONF" 2>&1)
     RET=$?
     if [ $RET -eq 0 ]; then
@@ -92,8 +82,20 @@ case "$ACTION" in
       sudo chmod 666 "$WG_CONF"
       html_response "Konfiguration gespeichert." "$OUTPUT"
     else
-      html_response "Keine Konfigurationsdaten Ã¼bermittelt." ""
+      html_response "Keine Konfigurationsdaten übermittelt." ""
     fi
+    ;;
+  autostart-on)
+    OUTPUT=$(sudo systemctl enable wg-custom.service 2>&1)
+    html_response "Autostart aktiviert." "$OUTPUT"
+    ;;
+  autostart-off)
+    OUTPUT=$(sudo systemctl disable wg-custom.service 2>&1)
+    html_response "Autostart deaktiviert." "$OUTPUT"
+    ;;
+  autostart-status)
+    OUTPUT=$(systemctl is-enabled wg-custom.service 2>&1)
+    html_response "Autostart-Status:" "$OUTPUT"
     ;;
   *)
     html_response "Unbekannte Aktion: '$ACTION'." ""
@@ -112,7 +114,7 @@ cat /opt/digitalflugbuch/data/DatenBuch/wg0.conf
 EOF
 sudo chmod +x "$GET_CONF"
 
-# 5. HTML-Datei speichern
+# 5. HTML-Datei
 HTML_PATH="/var/www/html/wireguard.html"
 sudo tee "$HTML_PATH" > /dev/null << 'EOF'
 <!DOCTYPE html>
@@ -131,24 +133,22 @@ sudo tee "$HTML_PATH" > /dev/null << 'EOF'
       justify-content: center;
       align-items: center;
       height: 100vh;
-      box-sizing: border-box;
     }
     .container {
       background-color: #ffffff;
       padding: 30px;
       border-radius: 12px;
       box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
-      width: 100%;
       max-width: 800px;
+      width: 100%;
       text-align: center;
     }
     h1 {
-      font-size: 30px;
-      color: #333;
+      font-size: 28px;
       margin-bottom: 20px;
     }
     form {
-      margin-top: 20px;
+      margin: 15px 0;
     }
     button {
       background-color: #4CAF50;
@@ -158,8 +158,8 @@ sudo tee "$HTML_PATH" > /dev/null << 'EOF'
       border-radius: 8px;
       cursor: pointer;
       font-size: 16px;
-      transition: background-color 0.3s ease, transform 0.3s ease;
       margin: 5px;
+      transition: 0.3s;
     }
     button:hover {
       background-color: #45a049;
@@ -169,58 +169,16 @@ sudo tee "$HTML_PATH" > /dev/null << 'EOF'
       width: 100%;
       height: 200px;
       font-family: monospace;
-      font-size: 14px;
       padding: 10px;
       border-radius: 8px;
       border: 1px solid #ccc;
       margin-top: 10px;
-    }
-    .back-to-home {
-      background-color: #2196F3;
-      color: white;
-      padding: 12px 20px;
-      border: none;
-      border-radius: 8px;
-      font-size: 16px;
-      cursor: pointer;
-      text-decoration: none;
-      display: inline-block;
-      margin-top: 20px;
-      transition: background-color 0.3s ease, transform 0.3s ease;
-    }
-    .back-to-home:hover {
-      background-color: #1976D2;
-      transform: scale(1.05);
-    }
-    .footer-note {
-      margin-top: 20px;
-      font-size: 14px;
-      color: #888;
-    }
-    .license-info {
-      margin-top: 30px;
-      font-size: 14px;
-      color: #555;
-      border-top: 1px solid #ddd;
-      padding-top: 15px;
-    }
-    .license-info a {
-      color: #333;
-      text-decoration: none;
-    }
-    .license-info a:hover {
-      text-decoration: underline;
     }
   </style>
 </head>
 <body>
   <div class="container">
     <h1>WireGuard Client Steuerung</h1>
-
-    <div style="background-color: #fff3cd; border: 1px solid #ffeeba; padding: 15px; border-radius: 5px; color: #856404; margin-bottom: 20px;">
-        <strong>Hinweis:</strong> Der Dienst wird <strong>nicht automatisch gestartet</strong>.  
-        Um die VPN-Verbindung zu aktivieren, muss die Verbindung manuell gestartet werden.
-    </div>
 
     <form method="post" action="/cgi-bin/wireguard_control.sh">
       <button type="submit" name="action" value="start">Verbindung aktivieren</button>
@@ -233,12 +191,14 @@ sudo tee "$HTML_PATH" > /dev/null << 'EOF'
       <button type="submit" name="action" value="update">Konfiguration speichern</button>
     </form>
 
-    <a href="index.html" class="back-to-home">Zur&uuml;ck zur Startseite</a>
+    <form method="post" action="/cgi-bin/wireguard_control.sh">
+      <h2>Autostart-Verwaltung</h2>
+      <button type="submit" name="action" value="autostart-on">Autostart aktivieren</button>
+      <button type="submit" name="action" value="autostart-off">Autostart deaktivieren</button>
+      <button type="submit" name="action" value="autostart-status">Autostart-Status anzeigen</button>
+    </form>
 
-    <div class="footer-note">Powered by Ebner Stephan</div>
-    <div class="license-info">
-      <p>Dieses Projekt steht unter der <a href="https://github.com/stephanflug/digitales-Flugbuch/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">MIT-Lizenz</a>.</p>
-    </div>
+    <a href="index.html" class="back-to-home">Zur&uuml;ck zur Startseite</a>
   </div>
 
   <script>
@@ -253,14 +213,18 @@ sudo tee "$HTML_PATH" > /dev/null << 'EOF'
 </html>
 EOF
 
-# 6. www-data darf wg-quick ohne Passwort ausführen
-SUDO_LINE="www-data ALL=(ALL) NOPASSWD: /usr/bin/wg-quick"
-if ! sudo grep -qF "$SUDO_LINE" /etc/sudoers; then
-  echo "data: Sudoers-Regel wird hinzugefügt..."
-  echo "$SUDO_LINE" | sudo tee -a /etc/sudoers > /dev/null
+# 6. Sudoers-Regeln
+SUDO_LINE1="www-data ALL=(ALL) NOPASSWD: /usr/bin/wg-quick"
+SUDO_LINE2="www-data ALL=(ALL) NOPASSWD: /bin/systemctl"
+
+if ! sudo grep -qF "$SUDO_LINE1" /etc/sudoers; then
+  echo "$SUDO_LINE1" | sudo tee -a /etc/sudoers > /dev/null
+fi
+if ! sudo grep -qF "$SUDO_LINE2" /etc/sudoers; then
+  echo "$SUDO_LINE2" | sudo tee -a /etc/sudoers > /dev/null
 fi
 
-# 7. WireGuard-Link zur index.html hinzufügen, falls noch nicht vorhanden
+# 7. Button auf index.html hinzufügen
 INDEX_HTML="/var/www/html/index.html"
 LINK='<button type="button" onclick="window.location.href='\''wireguard.html'\''">WireGuard</button>'
 if ! grep -q "wireguard.html" "$INDEX_HTML"; then
@@ -268,6 +232,30 @@ if ! grep -q "wireguard.html" "$INDEX_HTML"; then
   sudo sed -i "/<div class=\"button-container\">/,/<\/div>/ {
     /<\/div>/ i \\        $LINK
   }" "$INDEX_HTML"
+fi
+
+# 8. systemd-Service für Autostart erstellen
+SERVICE_FILE="/etc/systemd/system/wg-custom.service"
+if [ ! -f "$SERVICE_FILE" ]; then
+  echo "data: Erstelle systemd-Service für WireGuard Autostart..."
+  sudo tee "$SERVICE_FILE" > /dev/null <<EOF
+[Unit]
+Description=WireGuard VPN (custom config)
+After=network.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/wg-quick up /opt/digitalflugbuch/data/DatenBuch/wg0.conf
+ExecStop=/usr/bin/wg-quick down /opt/digitalflugbuch/data/DatenBuch/wg0.conf
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+  sudo systemctl daemon-reexec
+  sudo systemctl daemon-reload
+  sudo systemctl enable wg-custom.service
 fi
 
 echo ""
