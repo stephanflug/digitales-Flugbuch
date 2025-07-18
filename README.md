@@ -14,6 +14,7 @@ Mit der Software und der Verbindung zu einem Raspberry Pi Zero kann eine digital
 ## Kontakt  
 Bei Fragen können Sie mich gerne per E-Mail erreichen:  
 📧 [steuerung@gmx.at](mailto:steuerung@gmx.at)
+oder auch auf dieser Seite [Flugbuch](https://flugbuch.gltdienst.home64.de))
 
 
 ## ⭐ Features
