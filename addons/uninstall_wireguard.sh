@@ -43,10 +43,6 @@ if grep -q "wireguard.html" "$INDEX_HTML"; then
   sudo sed -i "/wireguard\.html/d" "$INDEX_HTML"
 fi
 
-# 7. Optional: Deinstalliere WireGuard (Kommentar entfernen, wenn gewünscht)
-# echo "→ Deinstalliere WireGuard Paket..."
-# sudo apt remove -y wireguard resolvconf
-
 echo ""
 echo "✅ WireGuard-Funktionen wurden entfernt."
 
