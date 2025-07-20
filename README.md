@@ -70,7 +70,7 @@ Ab Version 3.5 kann die Altitude-Sensor-Funktion direkt mit dem Flugbuch verwend
     -Bossserver Funktionen.Eine externe Betriebsaufzeichnung auf dem Vereinsserver.
     
 <p align="center">
-  <img src="https://github.com/stephanflug/digitales-Flugbuch/blob/main/Bilder/TopologieFlugbuch.png?raw=true" alt="Logo" width="500" height="500"/>
+  <img src="https://github.com/stephanflug/digitales-Flugbuch/blob/main/Bilder/TopologieFlugbuch.png?raw=true" alt="Logo" width="700" height="700"/>
 </p>
 
 
