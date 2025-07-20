@@ -10,6 +10,11 @@ mkdir -p "$(dirname "$LOGFILE2")"
 # Ausgabe und Fehlerausgabe gleichzeitig in beide Logdateien schreiben
 exec > >(tee -a "$LOGFILE1" | tee -a "$LOGFILE2") 2>&1
 
+# Logdatei anlegen, falls nicht vorhanden, und Rechte setzen
+touch "$LOGFILE2"
+chown www-data:www-data "$LOGFILE2"
+chmod 644 "$LOGFILE2"
+
 echo "-------------------------------------------"
 echo "Start des Updates: $(date)"
 echo "Logdatei: $LOGFILE"
