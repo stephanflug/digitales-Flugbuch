@@ -12,10 +12,10 @@ echo "Logdatei: $LOGFILE"
 echo "-------------------------------------------"
 
 # Internetverbindung zu GitHub prüfen
-if [ "$(curl -s -o /dev/null -w '%{http_code}' https://api.github.com)" != "200" ]; then
-    echo "Fehler: Keine Verbindung zu GitHub. Abbruch."
-    exit 1
-fi
+#if [ "$(curl -s -o /dev/null -w '%{http_code}' https://api.github.com)" != "200" ]; then
+  #  echo "Fehler: Keine Verbindung zu GitHub. Abbruch."
+   # exit 1
+#fi
 
 
 
