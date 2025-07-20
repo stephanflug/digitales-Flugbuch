@@ -12,10 +12,11 @@ echo "Logdatei: $LOGFILE"
 echo "-------------------------------------------"
 
 # Internet überprüfen
-#if ! ping -c 1 -W 2 8.8.8.8 >/dev/null 2>&1; then
-   # echo "Fehler: Keine Internetverbindung."
-    #exit 1
-#fi
+if ! curl -s --head https://api.github.com | grep "200 OK" > /dev/null; then
+    echo "Fehler: Keine Verbindung zu GitHub. Abbruch."
+    exit 1
+fi
+
 
 
 # Docker stoppen
