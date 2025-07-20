@@ -12,11 +12,10 @@ echo "Logdatei: $LOGFILE"
 echo "-------------------------------------------"
 
 # Internet überprüfen
-if ! curl -s --head https://api.github.com | grep "200 OK" > /dev/null; then
+if ! curl -s --head https://api.github.com | grep -q "200"; then
     echo "Fehler: Keine Verbindung zu GitHub. Abbruch."
     exit 1
 fi
-
 
 
 # Docker stoppen
