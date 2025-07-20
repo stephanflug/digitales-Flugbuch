@@ -2,7 +2,7 @@
 
 # Logfile
 LOGFILE1="/var/log/digitalflugbuch_update.log"
-LOGFILE2="/var/wwww/html/log/digitalflugbuch_update.log"
+LOGFILE2="/var/www/html/log/digitalflugbuch_update.log"
 
 # Sicherstellen, dass das zweite Logverzeichnis existiert
 mkdir -p "$(dirname "$LOGFILE2")"
