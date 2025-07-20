@@ -48,9 +48,7 @@ Ab Version 3.5 kann die Altitude-Sensor-Funktion direkt mit dem Flugbuch verwend
 > **Hinweis:** Mit WireGuard VPN wird der Zugriff auf das Flugbuch so sicher und komfortabel wie ein lokaler Zugriff im Verein.
 
 
-<p align="center">
-  <img src="https://github.com/stephanflug/digitales-Flugbuch/blob/main/Bilder/TopologieFlugbuch.png?raw=true" alt="Logo" width="500" height="500"/>
-</p>
+
 
 ## ⭐ Möglichkeiten: 
     -Flugbuch-Auswertung direkt auf dem Gerät
@@ -70,6 +68,11 @@ Ab Version 3.5 kann die Altitude-Sensor-Funktion direkt mit dem Flugbuch verwend
     -Zusätzliche ist es ab der V3.0 möglich via Rest-API Schnitstelle die Flugbuchdaten zu übermitteln
     -Ab der 3.5 Version ist es jetzt möglich einen Altitude Sensor zu verwenden.
     -Bossserver Funktionen.Eine externe Betriebsaufzeichnung auf dem Vereinsserver.
+    
+<p align="center">
+  <img src="https://github.com/stephanflug/digitales-Flugbuch/blob/main/Bilder/TopologieFlugbuch.png?raw=true" alt="Logo" width="500" height="500"/>
+</p>
+
 
 ## 🔧 Vorbereitung: 
 ```
