@@ -11,6 +11,12 @@ echo "Start des Updates: $(date)"
 echo "Logdatei: $LOGFILE"
 echo "-------------------------------------------"
 
+# Internet überprüfen
+if ! curl -s --head http://google.com | grep "200 OK" > /dev/null; then
+    echo "Fehler: Keine Internetverbindung. Update wird abgebrochen."
+    exit 1
+fi
+
 # Docker stoppen
 echo "Docker-Container werden gestoppt..."
 RUNNING_CONTAINERS=$(docker ps -q)
