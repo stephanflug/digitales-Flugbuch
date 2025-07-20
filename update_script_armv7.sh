@@ -12,8 +12,8 @@ echo "Logdatei: $LOGFILE"
 echo "-------------------------------------------"
 
 # Internet überprüfen
-if ! curl -s --head http://google.com | grep "200 OK" > /dev/null; then
-    echo "Fehler: Keine Internetverbindung. Update wird abgebrochen."
+if ! curl -s --head -L http://google.com | grep "200 OK" > /dev/null; then
+    echo "Fehler: Keine Internetverbindung."
     exit 1
 fi
 
