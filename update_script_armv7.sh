@@ -11,11 +11,12 @@ echo "Start des Updates: $(date)"
 echo "Logdatei: $LOGFILE"
 echo "-------------------------------------------"
 
-# Internet überprüfen
-if ! curl -s --head https://api.github.com | grep -q "200"; then
+# Internetverbindung zu GitHub prüfen
+if [ "$(curl -s -o /dev/null -w '%{http_code}' https://api.github.com)" != "200" ]; then
     echo "Fehler: Keine Verbindung zu GitHub. Abbruch."
     exit 1
 fi
+
 
 
 # Docker stoppen
