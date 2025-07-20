@@ -1,23 +1,19 @@
 #!/bin/bash
 
-# Logfile definieren
-LOGFILE="/var/log/digitalflugbuch_update.log"
+# Logfile
+LOGFILE1="/var/log/digitalflugbuch_update.log"
+LOGFILE2="/usr/lib/cgi-bin/log/digitalflugbuch_update.log"
 
-# Ausgabe und Fehlerausgabe in die Logdatei umleiten
-exec > >(tee -a "$LOGFILE") 2>&1
+# Sicherstellen, dass das zweite Logverzeichnis existiert
+mkdir -p "$(dirname "$LOGFILE2")"
+
+# Ausgabe und Fehlerausgabe gleichzeitig in beide Logdateien schreiben
+exec > >(tee -a "$LOGFILE1" | tee -a "$LOGFILE2") 2>&1
 
 echo "-------------------------------------------"
 echo "Start des Updates: $(date)"
 echo "Logdatei: $LOGFILE"
 echo "-------------------------------------------"
-
-# Internetverbindung zu GitHub prüfen
-#if [ "$(curl -s -o /dev/null -w '%{http_code}' https://api.github.com)" != "200" ]; then
-  #  echo "Fehler: Keine Verbindung zu GitHub. Abbruch."
-   # exit 1
-#fi
-
-
 
 # Docker stoppen
 echo "Docker-Container werden gestoppt..."
