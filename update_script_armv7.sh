@@ -209,6 +209,11 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
+# Logdateien löschen nach erfolgreichem Abschluss
+echo "Bereinige Logdateien..."
+rm -f /usr/lib/cgi-bin/log/digitalflugbuch_update.log
+
+
 echo "-------------------------------------------"
 echo "Update abgeschlossen: $(date)"
 echo "Shell In A Box ist unter http://<IP>:4200 erreichbar."
