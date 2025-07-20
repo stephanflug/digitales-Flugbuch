@@ -12,10 +12,11 @@ echo "Logdatei: $LOGFILE"
 echo "-------------------------------------------"
 
 # Internet überprüfen
-if ! curl -s --head -L http://google.com | grep "200 OK" > /dev/null; then
+if ! ping -c 1 -W 2 8.8.8.8 >/dev/null 2>&1; then
     echo "Fehler: Keine Internetverbindung."
     exit 1
 fi
+
 
 # Docker stoppen
 echo "Docker-Container werden gestoppt..."
