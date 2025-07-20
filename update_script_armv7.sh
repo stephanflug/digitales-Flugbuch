@@ -216,7 +216,7 @@ fi
 
 # Logdateien löschen nach erfolgreichem Abschluss
 echo "Bereinige Logdateien..."
-rm -f /usr/lib/cgi-bin/log/digitalflugbuch_update.log
+rm -f /var/www/html/log/digitalflugbuch_update.log
 
 
 echo "-------------------------------------------"
