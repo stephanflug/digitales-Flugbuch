@@ -1,5 +1,9 @@
 #!/bin/bash
 
+LOGFILE="/var/log/wireguard_setup.log"
+exec > >(tee -a "$LOGFILE")
+exec 2>&1
+
 echo "Content-Type: text/event-stream"
 echo "Cache-Control: no-cache"
 echo "Connection: keep-alive"
