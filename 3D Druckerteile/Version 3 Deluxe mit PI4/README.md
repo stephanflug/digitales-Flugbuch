@@ -2,7 +2,7 @@
 
 Ein maßgeschneidertes Gehäuse für den Raspberry Pi 4 – mit Halterungen für ein RFID-Modul, ein Display sowie Belüftung für einen Kühlkörper.
 
-![Gehäuse mit RFID und Display](https://github.com/stephanflug/digitales-Flugbuch/blob/main/3D%20Druckerteile/Version%201%20Basic%20mit%20Zero/Version%202%20Standard%20mit%20Zero/DigiFlugbuch-Bild1.jpg)
+![Gehäuse mit RFID und Display](https://github.com/stephanflug/digitales-Flugbuch/blob/main/3D%20Druckerteile/Version%203%20Deluxe%20mit%20PI4/DigiFlugbuch-Bild1.jpg)
 
 ---
 
