@@ -2,7 +2,7 @@
 
 Ein maßgeschneidertes Gehäuse für den Raspberry Pi Zero W2 – mit Halterungen für ein RFID-Modul, ein Display sowie Belüftung für einen Kühlkörper.
 
-![Gehäuse mit RFID und Display](https://github.com/stephanflug/digitales-Flugbuch/blob/main/3D%20Druckerteile/Version%201%20Basic%20mit%20Zero/Geh%C3%A4useV2.jpg)
+![Gehäuse mit RFID und Display](https://github.com/stephanflug/digitales-Flugbuch/blob/main/3D%20Druckerteile/Version%201%20Basic%20mit%20Zero/IMG_0775.JPG)
 
 ---
 
