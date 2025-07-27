@@ -1,6 +1,6 @@
-# 📦 Raspberry Pi Zero W2 Gehäuse mit RFID und Display
+# 📦 Raspberry Pi 4 Gehäuse mit RFID und Display
 
-Ein maßgeschneidertes Gehäuse für den Raspberry Pi Zero W2 – mit Halterungen für ein RFID-Modul, ein Display sowie Belüftung für einen Kühlkörper.
+Ein maßgeschneidertes Gehäuse für den Raspberry Pi 4 – mit Halterungen für ein RFID-Modul, ein Display sowie Belüftung für einen Kühlkörper.
 
 ![Gehäuse mit RFID und Display](https://github.com/stephanflug/digitales-Flugbuch/blob/main/3D%20Druckerteile/Version%201%20Basic%20mit%20Zero/Version%202%20Standard%20mit%20Zero/DigiFlugbuch-Bild1.jpg)
 
@@ -45,5 +45,4 @@ Die Schrauben werden direkt ins Material eingedreht (alternativ Gewindeeinsätze
 
 ## 🧑‍🔬 Autor
 
-Erstellt und getestet von **Christoph Figl** 🛠️  
-Fragen, Feedback oder Verbesserungsvorschläge? Gerne via Pull Request.
+Erstellt und getestet von **Christoph Figl** 🛠️ 
