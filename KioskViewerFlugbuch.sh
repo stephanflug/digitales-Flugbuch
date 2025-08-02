@@ -2,7 +2,7 @@
 
 set -e
 
-echo "FlugbuchViewer MINI-KIOSK Installation..."
+echo "FlugbuchViewer Installation (SELF-HEALING, alles im Unterordner flugbuchviewer)..."
 
 INSTALLDIR="/opt/FlugbuchViewer"
 LOGO_URL="https://github.com/stephanflug/digitales-Flugbuch/raw/main/Logo/LOGO.jpg"
@@ -10,20 +10,63 @@ LOGO="$INSTALLDIR/LOGO.jpg"
 CONFIGFILE="$INSTALLDIR/kiosk_url.txt"
 KIOSKSH="$INSTALLDIR/kiosk.sh"
 SPLASH="$INSTALLDIR/show-logo.sh"
+CGIDIR="/usr/lib/cgi-bin/flugbuchviewer"
+HTMLDIR="/var/www/html/flugbuchviewer"
+AUTOSTART="/home/pi/.config/openbox/autostart"
 PROFILE="/home/pi/.bash_profile"
+LIGHTDM_CONF="/etc/lightdm/lightdm.conf"
+
+echo "Prüfe auf Desktopumgebung..."
+if ! dpkg -l | grep -q raspberrypi-ui-mods; then
+  echo "-> Es wurde ein Lite-System erkannt! Installiere kompletten Desktop... (kann 10-15 Minuten dauern)"
+  sudo apt update
+  sudo apt install -y raspberrypi-ui-mods lxsession lxde xserver-xorg xinit openbox lightdm policykit-1
+  sudo usermod -a -G lightdm pi
+  echo "-> Desktop-Umgebung installiert."
+fi
 
 sudo mkdir -p "$INSTALLDIR"
 sudo chown pi:pi "$INSTALLDIR"
 
-# 1. Notwendige Pakete installieren
-sudo apt update
-sudo apt install -y xserver-xorg xinit openbox surf lighttpd python3 fbi wget xdotool
+# 1. Setze Boot-Target auf grafische Oberfläche (Desktop)
+sudo systemctl set-default graphical.target
 
-# 2. Splash-Logo herunterladen
+# 2. LightDM-Konfiguration für Autologin als User "pi"
+if [ -f /etc/lightdm/lightdm.conf ]; then
+  sudo sed -i '/^autologin-user=/d' /etc/lightdm/lightdm.conf
+  sudo sed -i '/^\[Seat:\*\]/a autologin-user=pi' /etc/lightdm/lightdm.conf
+else
+  sudo tee /etc/lightdm/lightdm.conf > /dev/null <<EOF
+[Seat:*]
+autologin-user=pi
+EOF
+fi
+
+# 3. Desktop-Pakete (ggf. erneut) installieren/reparieren
+sudo apt update
+sudo apt install --reinstall -y raspberrypi-ui-mods lxsession lxde xserver-xorg xinit openbox lightdm
+
+echo "Desktop-Start und Autologin für pi wurden fest eingestellt."
+
+# 4. Nötige Kiosk-Pakete
+sudo apt install -y x11-xserver-utils surf xdotool lighttpd python3 fbi wget lsb-release
+
+# 5. lighttpd & CGI
+sudo lighttpd-enable-mod cgi
+sudo systemctl restart lighttpd
+
+# 6. Kiosk-URL config (immer überschreiben, falls leer)
+if ! grep -q "http" "$CONFIGFILE" 2>/dev/null; then
+  echo "http://example.com" > "$CONFIGFILE"
+  echo "Konfigurationsdatei $CONFIGFILE gesetzt."
+fi
+
+# 7. Logo laden (immer neu)
 sudo wget -q -O "$LOGO" "$LOGO_URL"
 sudo chmod 644 "$LOGO"
+echo "Logo aktualisiert: $LOGO"
 
-# 3. Splash-Skript anlegen
+# 8. Splash-Skript anlegen
 cat << SPLASH_EOF > "$SPLASH"
 #!/bin/bash
 sudo fbi -T 1 -d /dev/fb0 -noverbose -a "$LOGO"
@@ -32,76 +75,76 @@ sudo killall fbi
 SPLASH_EOF
 sudo chmod +x "$SPLASH"
 
-# 4. Splash beim Boot ausführen (Crontab root)
 if ! sudo crontab -l 2>/dev/null | grep -q "$SPLASH"; then
   (sudo crontab -l 2>/dev/null; echo "@reboot $SPLASH") | sudo crontab -
+  echo "Boot-Splash in Root-Crontab eingetragen."
 fi
 
-# 5. Konfigurationsdatei für die Kiosk-URL
-if ! [ -f "$CONFIGFILE" ]; then
-  echo "http://example.com" > "$CONFIGFILE"
-fi
-
-# 6. Kiosk-Startskript
+# 9. Kiosk-Startskript mit surf schreiben
 cat << EOS > "$KIOSKSH"
 #!/bin/bash
+for i in {1..20}; do
+  if pgrep -x Xorg >/dev/null; then break; fi
+  sleep 1
+done
+sleep 2
 URL=\$(cat "$CONFIGFILE")
-surf "\$URL"
+surf -e -s "\$URL"
 EOS
 chmod +x "$KIOSKSH"
 
-# 7. .bash_profile für Autostart (immer frisch überschreiben!)
-cat << BASH_EOF > "$PROFILE"
-# Starte Kiosk-Browser im X11, wenn am HDMI/TTY1
-if [ -z "\$DISPLAY" ] && [ "\$(tty)" = "/dev/tty1" ]; then
-  startx "$KIOSKSH"
-  logout
+# 10. Openbox Autostart überschreiben (immer frisch)
+mkdir -p "$(dirname "$AUTOSTART")"
+echo "$KIOSKSH &" > "$AUTOSTART"
+chmod 644 "$AUTOSTART"
+
+# 11. .bash_profile für Autostart
+if ! grep -q "startx" "$PROFILE" 2>/dev/null; then
+  echo '
+if [ -z "$DISPLAY" ] && [ "$(tty)" = "/dev/tty1" ]; then
+  startx
+fi' >> "$PROFILE"
 fi
-BASH_EOF
-chown pi:pi "$PROFILE"
 
-# 8. lighttpd & CGI aktivieren
-sudo lighttpd-enable-mod cgi
-sudo systemctl restart lighttpd
+# 12. CGI-Skripte (Unterordner!)
+sudo mkdir -p "$CGIDIR"
 
-# 9. CGI-Skripte für Admin-Webinterface
-sudo mkdir -p /usr/lib/cgi-bin
-
-sudo tee /usr/lib/cgi-bin/seturl.py > /dev/null << EOF
+sudo tee "$CGIDIR/seturl.py" > /dev/null << EOF
 #!/usr/bin/env python3
 import cgi
 form = cgi.FieldStorage()
-print("Content-Type: text/html\\n")
+print("Content-Type: text/html\n")
 if "url" in form:
     with open("$CONFIGFILE", "w") as f:
         f.write(form["url"].value)
-    print("URL gespeichert! <a href='/'>Zurück</a>")
+    print("URL gespeichert! <a href='/flugbuchviewer/'>Zurück</a>")
 else:
     print("Fehler: Keine URL übergeben!")
 EOF
-sudo chmod +x /usr/lib/cgi-bin/seturl.py
+sudo chmod +x "$CGIDIR/seturl.py"
 
-sudo tee /usr/lib/cgi-bin/restart.py > /dev/null << EOF
+sudo tee "$CGIDIR/restart.py" > /dev/null << EOF
 #!/usr/bin/env python3
 import os
-print("Content-Type: text/html\\n")
+print("Content-Type: text/html\n")
 os.system("pkill surf")
 os.system("$KIOSKSH &")
-print("Browser neugestartet! <a href='/'>Zurück</a>")
+print("Browser neugestartet! <a href='/flugbuchviewer/'>Zurück</a>")
 EOF
-sudo chmod +x /usr/lib/cgi-bin/restart.py
+sudo chmod +x "$CGIDIR/restart.py"
 
-sudo tee /usr/lib/cgi-bin/reload.py > /dev/null << EOF
+sudo tee "$CGIDIR/reload.py" > /dev/null << EOF
 #!/usr/bin/env python3
 import os
-print("Content-Type: text/html\\n")
+print("Content-Type: text/html\n")
 os.system("xdotool search --onlyvisible --class surf key F5")
-print("Browser neu geladen! <a href='/'>Zurück</a>")
+print("Browser neu geladen! <a href='/flugbuchviewer/'>Zurück</a>")
 EOF
-sudo chmod +x /usr/lib/cgi-bin/reload.py
+sudo chmod +x "$CGIDIR/reload.py"
 
-# 10. Admin-Oberfläche (index.html)
-sudo tee /var/www/html/index.html > /dev/null << 'EOF'
+# 13. Admin-Oberfläche (im eigenen Ordner)
+sudo mkdir -p "$HTMLDIR"
+sudo tee "$HTMLDIR/index.html" > /dev/null << 'EOF'
 <!DOCTYPE html>
 <html lang="de">
 <head>
@@ -128,17 +171,17 @@ sudo tee /var/www/html/index.html > /dev/null << 'EOF'
   <div class="container">
     <h1>Flugbuch Viewer</h1>
     <h2>Powerby Ebner Stephan</h2>
-    <form action="/cgi-bin/seturl.py" method="post">
+    <form action="/cgi-bin/flugbuchviewer/seturl.py" method="post">
       <label for="url">Kiosk-URL ändern:</label>
       <input type="text" id="url" name="url" placeholder="Neue Kiosk-URL eingeben">
       <div class="actions">
         <button type="submit">URL speichern</button>
       </div>
     </form>
-    <form action="/cgi-bin/restart.py" method="post" style="display:inline;">
+    <form action="/cgi-bin/flugbuchviewer/restart.py" method="post" style="display:inline;">
       <button type="submit">Browser neustarten</button>
     </form>
-    <form action="/cgi-bin/reload.py" method="post" style="display:inline;">
+    <form action="/cgi-bin/flugbuchviewer/reload.py" method="post" style="display:inline;">
       <button type="submit">Seite neu laden</button>
     </form>
     <div class="footer">
@@ -152,19 +195,23 @@ sudo tee /var/www/html/index.html > /dev/null << 'EOF'
 </html>
 EOF
 
-sudo chown www-data:www-data /var/www/html/index.html
+sudo chown -R www-data:www-data "$HTMLDIR"
 
-# Hostname ändern
+# Hostname ändern (immer frisch setzen!)
 sudo hostnamectl set-hostname FlugbuchViewer
 sudo sed -i "s/127.0.1.1.*/127.0.1.1\tFlugbuchViewer/" /etc/hosts
 
 echo ""
 echo "-----------------------------------------"
 echo "FERTIG! Raspberry Pi ist jetzt ein FLUGBUCH-VIEWER!"
-echo "- Bootet direkt in den Surf-Kiosk-Browser (am HDMI, ohne Desktop!)"
+echo "- Bootet direkt auf Desktop und Kiosk-Browser (mit surf)."
 echo "- Splash-Logo erscheint kurz am HDMI beim Start."
-echo "- Admin-Webinterface: http://<PI-IP>/"
+echo "- Admin-Webinterface: http://<PI-IP>/flugbuchviewer/"
 echo "- Alles kann beliebig oft installiert werden."
 echo ""
-echo ">> Jetzt Raspberry Pi neu starten! <<"
-echo "-----------------------------------------"
+if ! pgrep -x Xorg >/dev/null; then
+  echo "Desktop wurde gerade erst installiert. Jetzt wird automatisch neugestartet!"
+  sleep 3
+  sudo reboot
+  exit 0
+fi
