@@ -9,7 +9,7 @@ if ! dpkg -l | grep -q raspberrypi-ui-mods; then
   echo "Desktop-Umgebung nicht gefunden. Installiere minimale Desktop-Oberfläche..."
   sudo apt update
   sudo apt install --no-install-recommends -y raspberrypi-ui-mods lxsession lxde
-  echo "Desktop-Oberfläche installiert. Bitte ggf. nach Abschluss neu starten!"
+
 fi
 
 # 1. Pakete installieren
