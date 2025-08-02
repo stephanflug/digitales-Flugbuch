@@ -4,40 +4,42 @@ set -e
 
 echo "Flugbuch Viewer wird installiert..."
 
-# 0. Installationsverzeichnis festlegen
+# ---- 0. Installationsverzeichnis festlegen ----
 INSTALLDIR="/opt/FlugbuchViewer"
 sudo mkdir -p "$INSTALLDIR"
 sudo chown $USER:$USER "$INSTALLDIR"
 
-# 1. Prüfen, ob Desktop-Umgebung installiert ist
+# ---- 1. Desktop-Umgebung sicherstellen ----
 if ! dpkg -l | grep -q raspberrypi-ui-mods; then
   echo "Desktop-Umgebung nicht gefunden. Installiere minimale Desktop-Oberfläche..."
   sudo apt update
   sudo apt install --no-install-recommends -y raspberrypi-ui-mods lxsession lxde
 fi
 
-# 2. Pakete installieren (inkl. fbi für Logo-Splash!)
+# ---- 2. Notwendige Pakete installieren ----
 sudo apt update
 sudo apt install -y xserver-xorg x11-xserver-utils xinit openbox chromium-browser xdotool lighttpd python3 fbi wget
 
-# 3. lighttpd CGI aktivieren
+# ---- 3. lighttpd CGI aktivieren ----
 sudo lighttpd-enable-mod cgi
 sudo systemctl restart lighttpd
 
-# 4. Konfigurationsdatei für die Kiosk-URL im INSTALLDIR
+# ---- 4. Kiosk-URL Konfiguration ----
 CONFIGFILE="$INSTALLDIR/kiosk_url.txt"
 if [ ! -f "$CONFIGFILE" ]; then
   echo "http://example.com" > "$CONFIGFILE"
   echo "Konfigurationsdatei $CONFIGFILE angelegt."
 fi
 
-# 5. Logo herunterladen
+# ---- 5. Logo herunterladen ----
 LOGO="$INSTALLDIR/LOGO.jpg"
-sudo wget -O "$LOGO" "https://github.com/stephanflug/digitales-Flugbuch/raw/main/Logo/LOGO.jpg"
-sudo chmod 644 "$LOGO"
-echo "Logo wurde heruntergeladen: $LOGO"
+if [ ! -f "$LOGO" ]; then
+  sudo wget -O "$LOGO" "https://github.com/stephanflug/digitales-Flugbuch/raw/main/Logo/LOGO.jpg"
+  sudo chmod 644 "$LOGO"
+  echo "Logo wurde heruntergeladen: $LOGO"
+fi
 
-# 6. Splash-Skript anlegen
+# ---- 6. Splash-Skript einrichten ----
 SPLASH="$INSTALLDIR/show-logo.sh"
 cat << SPLASH_EOF > "$SPLASH"
 #!/bin/bash
@@ -47,41 +49,56 @@ sudo killall fbi
 SPLASH_EOF
 sudo chmod +x "$SPLASH"
 
-# 7. Splash-Skript per crontab beim Boot starten
 if ! sudo crontab -l 2>/dev/null | grep -q "$SPLASH"; then
   (sudo crontab -l 2>/dev/null; echo "@reboot $SPLASH") | sudo crontab -
   echo "Boot-Splash in Root-Crontab eingetragen."
 fi
 
-# 8. Kiosk-Startskript ins INSTALLDIR
+# ---- 7. Sicherstellen, dass Desktop automatisch startet ----
+# Setze Desktop Autologin
+if ! sudo grep -q "autologin-user=pi" /etc/lightdm/lightdm.conf 2>/dev/null; then
+  sudo sed -i '/^\[Seat:\*\]/a autologin-user=pi' /etc/lightdm/lightdm.conf 2>/dev/null || true
+fi
+
+# Setze Boot auf Desktop
+sudo raspi-config nonint do_boot_behaviour B4
+
+# ---- 8. Kiosk-Startskript ins INSTALLDIR ----
 KIOSKSH="$INSTALLDIR/kiosk.sh"
 cat << EOS > "$KIOSKSH"
 #!/bin/bash
+# Warte auf X-Server und Netzwerk
+for i in {1..15}; do
+  if pgrep -x Xorg >/dev/null; then break; fi
+  sleep 1
+done
+sleep 3
 URL=\$(cat "$CONFIGFILE")
 chromium-browser --noerrdialogs --disable-infobars --kiosk "\$URL"
 EOS
 chmod +x "$KIOSKSH"
 echo "Kiosk-Startskript $KIOSKSH angelegt."
 
-# 9. Openbox Autostart auf das neue Skript anpassen
+# ---- 9. Openbox Autostart korrekt einrichten ----
 AUTOSTART="/home/pi/.config/openbox/autostart"
 mkdir -p "$(dirname "$AUTOSTART")"
-if ! grep -q "$KIOSKSH" "$AUTOSTART" 2>/dev/null; then
-  echo "$KIOSKSH &" >> "$AUTOSTART"
-  echo "Autostart für Kiosk aktualisiert."
-fi
+grep -v "FlugbuchViewer/kiosk.sh" "$AUTOSTART" 2>/dev/null > /tmp/autostart.tmp || true
+echo "$KIOSKSH &" >> /tmp/autostart.tmp
+mv /tmp/autostart.tmp "$AUTOSTART"
+chmod 644 "$AUTOSTART"
+echo "Autostart für Kiosk aktualisiert: $AUTOSTART"
 
-# 10. Automatisches Starten von X (TTY1)
+# ---- 10. Automatisches Starten von X (TTY1) ----
 PROFILE="/home/pi/.bash_profile"
 if ! grep -q "startx" "$PROFILE" 2>/dev/null; then
   echo '
 if [ -z "$DISPLAY" ] && [ "$(tty)" = "/dev/tty1" ]; then
   startx
 fi' >> "$PROFILE"
-  echo "Automatischer X-Start hinzugefügt."
+  echo "Automatischer X-Start hinzugefügt: $PROFILE"
 fi
 
-# 11. CGI-Skripte für Admin-Funktionen (nutzen INSTALLDIR)
+# ---- 11. CGI-Skripte für Admin-Funktionen ----
 sudo mkdir -p /usr/lib/cgi-bin
 
 # 11a. URL speichern
@@ -120,7 +137,7 @@ print("Browser neu geladen! <a href='/'>Zurück</a>")
 EOF
 sudo chmod +x /usr/lib/cgi-bin/reload.py
 
-# 12. Admin-Oberfläche (index.html)
+# ---- 12. Admin-Oberfläche (index.html) ----
 sudo tee /var/www/html/index.html > /dev/null << 'EOF'
 <!DOCTYPE html>
 <html lang="de">
@@ -174,15 +191,14 @@ EOF
 
 sudo chown www-data:www-data /var/www/html/index.html
 
-# Hostname ändern
+# ---- 13. Hostname ändern ----
 sudo hostnamectl set-hostname FlugbuchViewer
 sudo sed -i "s/127.0.1.1.*/127.0.1.1\tFlugbuchViewer/" /etc/hosts
 
-echo "Hostname wurde auf 'FlugbuchViewer' gesetzt."
-
 echo ""
 echo "FERTIG! Nach Neustart:"
-echo "- Danach Kiosk-URL (aus $CONFIGFILE) im Browser."
+echo "- Kurz nach dem Boot wird das Logo angezeigt."
+echo "- Der Desktop startet automatisch, Chromium öffnet die Kiosk-URL (aus $CONFIGFILE) am HDMI."
 echo "- Admin-Webseite erreichbar unter: http://<PI-IP>/"
 echo "- Dort kann die URL geändert und der Browser neu gestartet werden."
 echo ""
