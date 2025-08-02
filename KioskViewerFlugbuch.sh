@@ -2,7 +2,7 @@
 
 set -e
 
-echo "Flugbuch Viewer mit lighttpd, Boot-Logo und Admin-Webinterface wird installiert..."
+echo "Flugbuch Viewer wird installiert..."
 
 # 0. Installationsverzeichnis festlegen
 INSTALLDIR="/opt/FlugbuchViewer"
