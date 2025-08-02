@@ -85,7 +85,7 @@ for i in {1..20}; do
 done
 sleep 2
 URL=\$(cat "$CONFIGFILE")
-surf -e -s "\$URL"
+surf "\$URL"
 EOS
 chmod +x "$KIOSKSH"
 sudo chown pi:pi "$KIOSKSH"
