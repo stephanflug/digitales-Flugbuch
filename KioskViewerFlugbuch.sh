@@ -224,5 +224,10 @@ echo "- Splash-Logo erscheint kurz am HDMI beim Start."
 echo "- Admin-Webinterface: http://<PI-IP>/"
 echo "- Alles kann beliebig oft installiert werden."
 echo ""
-echo ">> Bitte Raspberry Pi jetzt neustarten! <<"
-echo "-----------------------------------------"
+if ! pgrep -x Xorg >/dev/null; then
+  echo "Desktop wurde gerade erst installiert. Jetzt wird automatisch neugestartet!"
+  sleep 3
+  sudo reboot
+  exit 0
+fi
+
