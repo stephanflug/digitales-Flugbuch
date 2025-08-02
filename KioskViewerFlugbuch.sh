@@ -2,29 +2,26 @@
 
 set -e
 
-echo "FlugbuchViewer Mini-Kiosk-Installation ..."
+echo "FlugbuchViewer Mini-Kiosk-Installation (systemd)..."
 
 INSTALLDIR="/opt/FlugbuchViewer"
 LOGO_URL="https://github.com/stephanflug/digitales-Flugbuch/raw/main/Logo/LOGO.jpg"
 LOGO="$INSTALLDIR/LOGO.jpg"
 CONFIGFILE="$INSTALLDIR/kiosk_url.txt"
 KIOSKSH="$INSTALLDIR/kiosk.sh"
-SPLASH="$INSTALLDIR/show-logo.sh"
 CGIDIR="/usr/lib/cgi-bin/flugbuchviewer"
 HTMLDIR="/var/www/html/flugbuchviewer"
-AUTOSTART="/home/pi/.config/openbox/autostart"
-PROFILE="/home/pi/.profile"
 
 # 1. Verzeichnisse & Rechte
 sudo mkdir -p "$INSTALLDIR" "$CGIDIR" "$HTMLDIR"
 sudo chown pi:pi "$INSTALLDIR"
 sudo chown -R www-data:www-data "$HTMLDIR" "$CGIDIR"
 
-# 2. Benötigte Pakete
+# 2. Pakete: NUR das nötigste!
 sudo apt update
-sudo apt install -y xserver-xorg xinit openbox surf unclutter lighttpd python3 fbi wget
+sudo apt install -y --no-install-recommends xserver-xorg xinit surf unclutter lighttpd python3 fbi wget
 
-# 3. Lighttpd & CGI
+# 3. lighttpd & CGI
 sudo lighttpd-enable-mod cgi
 sudo systemctl restart lighttpd
 
@@ -33,7 +30,8 @@ wget -q -O "$LOGO" "$LOGO_URL"
 chmod 644 "$LOGO"
 chown pi:pi "$LOGO"
 
-# 5. Splash-Skript
+# 5. Splash-Skript + root-crontab
+SPLASH="$INSTALLDIR/show-logo.sh"
 cat <<SPLASH_EOF > "$SPLASH"
 #!/bin/bash
 sudo fbi -T 1 -d /dev/fb0 -noverbose -a "$LOGO"
@@ -51,34 +49,38 @@ if [ ! -f "$CONFIGFILE" ]; then
   echo "http://example.com" > "$CONFIGFILE"
 fi
 
-# 7. Kiosk-Startskript (nur surf, Vollbild, Maus ausblenden)
+# 7. Kiosk-Startskript (surf, Maus verstecken)
 cat <<EOS > "$KIOSKSH"
 #!/bin/bash
-URL=\$(cat "$CONFIGFILE")
 unclutter -idle 1 &
+URL=\$(cat "$CONFIGFILE")
 surf -e -s "\$URL"
 EOS
 chmod +x "$KIOSKSH"
 chown pi:pi "$KIOSKSH"
 
-# 8. Openbox Autostart (überschreiben, nur das Skript!)
-mkdir -p "$(dirname "$AUTOSTART")"
-echo "$KIOSKSH &" | tee "$AUTOSTART"
-chmod 644 "$AUTOSTART"
-chown pi:pi "$AUTOSTART"
+# 8. Systemd-Unit für Autostart (WICHTIG!)
+SERVICE=/etc/systemd/system/kiosk.service
+sudo tee \$SERVICE > /dev/null <<EOF
+[Unit]
+Description=FlugbuchViewer Kiosk (surf)
+After=network.target
 
-# 9. .profile anpassen (startet X/Openbox automatisch bei pi-Login auf tty1)
-if ! grep -q "startx" "$PROFILE"; then
-  echo '
-if [ -z "$DISPLAY" ] && [ "$(tty)" = "/dev/tty1" ]; then
-  startx /usr/bin/openbox-session
-fi' >> "$PROFILE"
-  chown pi:pi "$PROFILE"
-fi
+[Service]
+User=pi
+Environment=DISPLAY=:0
+ExecStart=/usr/bin/startx $KIOSKSH
+Restart=always
 
-# 10. CGI-Skripte für Admin-Webinterface
-sudo mkdir -p "$CGIDIR"
+[Install]
+WantedBy=multi-user.target
+EOF
 
+sudo systemctl daemon-reload
+sudo systemctl enable kiosk.service
+sudo systemctl restart kiosk.service
+
+# 9. CGI-Skripte (immer neu schreiben, ausführbar!)
 sudo tee "$CGIDIR/seturl.py" > /dev/null << EOF
 #!/usr/bin/env python3
 import cgi
@@ -112,7 +114,7 @@ EOF
 sudo chmod +x "$CGIDIR/"*.py
 sudo chown -R www-data:www-data "$CGIDIR"
 
-# 11. Admin-HTML (im eigenen Ordner!)
+# 10. Admin-HTML (im eigenen Ordner!)
 sudo tee "$HTMLDIR/index.html" > /dev/null << 'EOF'
 <!DOCTYPE html>
 <html lang="de">
@@ -166,7 +168,7 @@ EOF
 
 sudo chown -R www-data:www-data "$HTMLDIR"
 
-# 12. Hostname
+# 11. Hostname
 sudo hostnamectl set-hostname FlugbuchViewer
 sudo sed -i "s/127.0.1.1.*/127.0.1.1\tFlugbuchViewer/" /etc/hosts
 
@@ -174,6 +176,7 @@ echo ""
 echo "-----------------------------------------"
 echo "FERTIG! Raspberry Pi ist jetzt ein FLUGBUCH-VIEWER!"
 echo "- Bootet NUR surf im Kiosk (kein Desktop, keine Leiste!)."
+echo "- Splash-Logo erscheint kurz am HDMI beim Start."
 echo "- Admin-Webinterface: http://<PI-IP>/flugbuchviewer/"
 echo ""
 echo ">> Reboot empfohlen: sudo reboot"
