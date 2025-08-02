@@ -2,7 +2,7 @@
 
 set -e
 
-echo "FlugbuchViewer Installation ..."
+echo "FlugbuchViewer Mini-Kiosk-Installation ..."
 
 INSTALLDIR="/opt/FlugbuchViewer"
 LOGO_URL="https://github.com/stephanflug/digitales-Flugbuch/raw/main/Logo/LOGO.jpg"
@@ -13,104 +13,77 @@ SPLASH="$INSTALLDIR/show-logo.sh"
 CGIDIR="/usr/lib/cgi-bin/flugbuchviewer"
 HTMLDIR="/var/www/html/flugbuchviewer"
 AUTOSTART="/home/pi/.config/openbox/autostart"
-PROFILE="/home/pi/.bash_profile"
-LIGHTDM_CONF="/etc/lightdm/lightdm.conf"
+PROFILE="/home/pi/.profile"
 
-# Ordner vorbereiten
+# 1. Verzeichnisse & Rechte
 sudo mkdir -p "$INSTALLDIR" "$CGIDIR" "$HTMLDIR"
 sudo chown pi:pi "$INSTALLDIR"
-sudo chown -R www-data:www-data "$HTMLDIR"
-sudo chown -R www-data:www-data "$CGIDIR"
+sudo chown -R www-data:www-data "$HTMLDIR" "$CGIDIR"
 
-# 1. Desktop-Umgebung installieren falls nötig
-if ! dpkg -l | grep -q raspberrypi-ui-mods; then
-  echo "-> Lite erkannt! Installiere Desktop (dauert 10-20 Min)..."
-  sudo apt update
-  sudo apt install -y raspberrypi-ui-mods lxsession lxde xserver-xorg xinit openbox lightdm policykit-1
-  sudo usermod -a -G lightdm pi
-  echo "-> Desktop installiert."
-fi
-
-# 2. Boot-Target grafische Oberfläche
-sudo systemctl set-default graphical.target
-
-# 3. LightDM Autologin für pi setzen
-if [ -f /etc/lightdm/lightdm.conf ]; then
-  sudo sed -i '/^autologin-user=/d' /etc/lightdm/lightdm.conf
-  sudo sed -i '/^\[Seat:\*\]/a autologin-user=pi' /etc/lightdm/lightdm.conf
-else
-  echo -e "[Seat:*]\nautologin-user=pi" | sudo tee /etc/lightdm/lightdm.conf
-fi
-
+# 2. Benötigte Pakete
 sudo apt update
-sudo apt install --reinstall -y raspberrypi-ui-mods lxsession lxde xserver-xorg xinit openbox lightdm
+sudo apt install -y xserver-xorg xinit openbox surf unclutter lighttpd python3 fbi wget
 
-# 4. Kiosk-Pakete
-sudo apt install -y x11-xserver-utils surf xdotool lighttpd python3 fbi wget lsb-release
-
-# 5. lighttpd & CGI
+# 3. Lighttpd & CGI
 sudo lighttpd-enable-mod cgi
 sudo systemctl restart lighttpd
 
-# 6. Kiosk-URL config
-if ! grep -q "http" "$CONFIGFILE" 2>/dev/null; then
-  echo "http://example.com" > "$CONFIGFILE"
-fi
+# 4. Splash-Logo laden
+wget -q -O "$LOGO" "$LOGO_URL"
+chmod 644 "$LOGO"
+chown pi:pi "$LOGO"
 
-# 7. Logo holen
-sudo wget -q -O "$LOGO" "$LOGO_URL"
-sudo chmod 644 "$LOGO"
-sudo chown pi:pi "$LOGO"
-
-# 8. Splash-Skript
-cat << SPLASH_EOF > "$SPLASH"
+# 5. Splash-Skript
+cat <<SPLASH_EOF > "$SPLASH"
 #!/bin/bash
 sudo fbi -T 1 -d /dev/fb0 -noverbose -a "$LOGO"
 sleep 2
 sudo killall fbi
 SPLASH_EOF
-sudo chmod +x "$SPLASH"
-sudo chown pi:pi "$SPLASH"
-
+chmod +x "$SPLASH"
+chown pi:pi "$SPLASH"
 if ! sudo crontab -l 2>/dev/null | grep -q "$SPLASH"; then
   (sudo crontab -l 2>/dev/null; echo "@reboot $SPLASH") | sudo crontab -
 fi
 
-# 9. Kiosk-Startskript mit surf
-cat << EOS > "$KIOSKSH"
-#!/bin/bash
-for i in {1..20}; do
-  if pgrep -x Xorg >/dev/null; then break; fi
-  sleep 1
-done
-sleep 2
-URL=\$(cat "$CONFIGFILE")
-surf "\$URL"
-EOS
-chmod +x "$KIOSKSH"
-sudo chown pi:pi "$KIOSKSH"
-
-# 10. Openbox Autostart (immer sauber überschreiben)
-mkdir -p "$(dirname "$AUTOSTART")"
-echo "$KIOSKSH &" | sudo tee "$AUTOSTART"
-sudo chmod 644 "$AUTOSTART"
-sudo chown pi:pi "$AUTOSTART"
-
-# 11. .bash_profile für Autostart
-if ! grep -q "startx" "$PROFILE" 2>/dev/null; then
-  echo '
-if [ -z "$DISPLAY" ] && [ "$(tty)" = "/dev/tty1" ]; then
-  startx
-fi' | sudo tee -a "$PROFILE"
-  sudo chown pi:pi "$PROFILE"
+# 6. Kiosk-URL Config
+if [ ! -f "$CONFIGFILE" ]; then
+  echo "http://example.com" > "$CONFIGFILE"
 fi
 
-# 12. CGI-Skripte (immer neu schreiben, ausführbar!)
+# 7. Kiosk-Startskript (nur surf, Vollbild, Maus ausblenden)
+cat <<EOS > "$KIOSKSH"
+#!/bin/bash
+URL=\$(cat "$CONFIGFILE")
+unclutter -idle 1 &
+surf -e -s "\$URL"
+EOS
+chmod +x "$KIOSKSH"
+chown pi:pi "$KIOSKSH"
+
+# 8. Openbox Autostart (überschreiben, nur das Skript!)
+mkdir -p "$(dirname "$AUTOSTART")"
+echo "$KIOSKSH &" | tee "$AUTOSTART"
+chmod 644 "$AUTOSTART"
+chown pi:pi "$AUTOSTART"
+
+# 9. .profile anpassen (startet X/Openbox automatisch bei pi-Login auf tty1)
+if ! grep -q "startx" "$PROFILE"; then
+  echo '
+if [ -z "$DISPLAY" ] && [ "$(tty)" = "/dev/tty1" ]; then
+  startx /usr/bin/openbox-session
+fi' >> "$PROFILE"
+  chown pi:pi "$PROFILE"
+fi
+
+# 10. CGI-Skripte für Admin-Webinterface
+sudo mkdir -p "$CGIDIR"
+
 sudo tee "$CGIDIR/seturl.py" > /dev/null << EOF
 #!/usr/bin/env python3
 import cgi
 form = cgi.FieldStorage()
-print("Content-Type: text/html\n")
+print("Content-Type: text/html\\n")
 if "url" in form:
     with open("$CONFIGFILE", "w") as f:
         f.write(form["url"].value)
@@ -122,7 +95,7 @@ EOF
 sudo tee "$CGIDIR/restart.py" > /dev/null << EOF
 #!/usr/bin/env python3
 import os
-print("Content-Type: text/html\n")
+print("Content-Type: text/html\\n")
 os.system("pkill surf")
 os.system("$KIOSKSH &")
 print("Browser neugestartet! <a href='/flugbuchviewer/'>Zurück</a>")
@@ -131,7 +104,7 @@ EOF
 sudo tee "$CGIDIR/reload.py" > /dev/null << EOF
 #!/usr/bin/env python3
 import os
-print("Content-Type: text/html\n")
+print("Content-Type: text/html\\n")
 os.system("xdotool search --onlyvisible --class surf key F5")
 print("Browser neu geladen! <a href='/flugbuchviewer/'>Zurück</a>")
 EOF
@@ -139,7 +112,7 @@ EOF
 sudo chmod +x "$CGIDIR/"*.py
 sudo chown -R www-data:www-data "$CGIDIR"
 
-# 13. Admin-Oberfläche (im eigenen Ordner, Rechte!)
+# 11. Admin-HTML (im eigenen Ordner!)
 sudo tee "$HTMLDIR/index.html" > /dev/null << 'EOF'
 <!DOCTYPE html>
 <html lang="de">
@@ -193,20 +166,15 @@ EOF
 
 sudo chown -R www-data:www-data "$HTMLDIR"
 
-# Hostname ändern
+# 12. Hostname
 sudo hostnamectl set-hostname FlugbuchViewer
 sudo sed -i "s/127.0.1.1.*/127.0.1.1\tFlugbuchViewer/" /etc/hosts
 
 echo ""
 echo "-----------------------------------------"
 echo "FERTIG! Raspberry Pi ist jetzt ein FLUGBUCH-VIEWER!"
-echo "- Bootet direkt auf Desktop und Kiosk-Browser (surf)."
-echo "- Splash-Logo erscheint kurz am HDMI beim Start."
+echo "- Bootet NUR surf im Kiosk (kein Desktop, keine Leiste!)."
 echo "- Admin-Webinterface: http://<PI-IP>/flugbuchviewer/"
 echo ""
-if ! pgrep -x Xorg >/dev/null; then
-  echo "Desktop wurde gerade erst installiert. Jetzt wird automatisch neugestartet!"
-  sleep 3
-  sudo reboot
-  exit 0
-fi
+echo ">> Reboot empfohlen: sudo reboot"
+echo "-----------------------------------------"
