@@ -2,7 +2,7 @@
 
 set -e
 
-echo "FlugbuchViewer Installation (SELF-HEALING, alles im Unterordner flugbuchviewer)..."
+echo "FlugbuchViewer Installation ..."
 
 INSTALLDIR="/opt/FlugbuchViewer"
 LOGO_URL="https://github.com/stephanflug/digitales-Flugbuch/raw/main/Logo/LOGO.jpg"
@@ -16,57 +16,53 @@ AUTOSTART="/home/pi/.config/openbox/autostart"
 PROFILE="/home/pi/.bash_profile"
 LIGHTDM_CONF="/etc/lightdm/lightdm.conf"
 
-echo "Prüfe auf Desktopumgebung..."
+# Ordner vorbereiten
+sudo mkdir -p "$INSTALLDIR" "$CGIDIR" "$HTMLDIR"
+sudo chown pi:pi "$INSTALLDIR"
+sudo chown -R www-data:www-data "$HTMLDIR"
+sudo chown -R www-data:www-data "$CGIDIR"
+
+# 1. Desktop-Umgebung installieren falls nötig
 if ! dpkg -l | grep -q raspberrypi-ui-mods; then
-  echo "-> Es wurde ein Lite-System erkannt! Installiere kompletten Desktop... (kann 10-15 Minuten dauern)"
+  echo "-> Lite erkannt! Installiere Desktop (dauert 10-20 Min)..."
   sudo apt update
   sudo apt install -y raspberrypi-ui-mods lxsession lxde xserver-xorg xinit openbox lightdm policykit-1
   sudo usermod -a -G lightdm pi
-  echo "-> Desktop-Umgebung installiert."
+  echo "-> Desktop installiert."
 fi
 
-sudo mkdir -p "$INSTALLDIR"
-sudo chown pi:pi "$INSTALLDIR"
-
-# 1. Setze Boot-Target auf grafische Oberfläche (Desktop)
+# 2. Boot-Target grafische Oberfläche
 sudo systemctl set-default graphical.target
 
-# 2. LightDM-Konfiguration für Autologin als User "pi"
+# 3. LightDM Autologin für pi setzen
 if [ -f /etc/lightdm/lightdm.conf ]; then
   sudo sed -i '/^autologin-user=/d' /etc/lightdm/lightdm.conf
   sudo sed -i '/^\[Seat:\*\]/a autologin-user=pi' /etc/lightdm/lightdm.conf
 else
-  sudo tee /etc/lightdm/lightdm.conf > /dev/null <<EOF
-[Seat:*]
-autologin-user=pi
-EOF
+  echo -e "[Seat:*]\nautologin-user=pi" | sudo tee /etc/lightdm/lightdm.conf
 fi
 
-# 3. Desktop-Pakete (ggf. erneut) installieren/reparieren
 sudo apt update
 sudo apt install --reinstall -y raspberrypi-ui-mods lxsession lxde xserver-xorg xinit openbox lightdm
 
-echo "Desktop-Start und Autologin für pi wurden fest eingestellt."
-
-# 4. Nötige Kiosk-Pakete
+# 4. Kiosk-Pakete
 sudo apt install -y x11-xserver-utils surf xdotool lighttpd python3 fbi wget lsb-release
 
 # 5. lighttpd & CGI
 sudo lighttpd-enable-mod cgi
 sudo systemctl restart lighttpd
 
-# 6. Kiosk-URL config (immer überschreiben, falls leer)
+# 6. Kiosk-URL config
 if ! grep -q "http" "$CONFIGFILE" 2>/dev/null; then
   echo "http://example.com" > "$CONFIGFILE"
-  echo "Konfigurationsdatei $CONFIGFILE gesetzt."
 fi
 
-# 7. Logo laden (immer neu)
+# 7. Logo holen
 sudo wget -q -O "$LOGO" "$LOGO_URL"
 sudo chmod 644 "$LOGO"
-echo "Logo aktualisiert: $LOGO"
+sudo chown pi:pi "$LOGO"
 
-# 8. Splash-Skript anlegen
+# 8. Splash-Skript
 cat << SPLASH_EOF > "$SPLASH"
 #!/bin/bash
 sudo fbi -T 1 -d /dev/fb0 -noverbose -a "$LOGO"
@@ -74,13 +70,13 @@ sleep 2
 sudo killall fbi
 SPLASH_EOF
 sudo chmod +x "$SPLASH"
+sudo chown pi:pi "$SPLASH"
 
 if ! sudo crontab -l 2>/dev/null | grep -q "$SPLASH"; then
   (sudo crontab -l 2>/dev/null; echo "@reboot $SPLASH") | sudo crontab -
-  echo "Boot-Splash in Root-Crontab eingetragen."
 fi
 
-# 9. Kiosk-Startskript mit surf schreiben
+# 9. Kiosk-Startskript mit surf
 cat << EOS > "$KIOSKSH"
 #!/bin/bash
 for i in {1..20}; do
@@ -92,23 +88,24 @@ URL=\$(cat "$CONFIGFILE")
 surf -e -s "\$URL"
 EOS
 chmod +x "$KIOSKSH"
+sudo chown pi:pi "$KIOSKSH"
 
-# 10. Openbox Autostart überschreiben (immer frisch)
+# 10. Openbox Autostart (immer sauber überschreiben)
 mkdir -p "$(dirname "$AUTOSTART")"
-echo "$KIOSKSH &" > "$AUTOSTART"
-chmod 644 "$AUTOSTART"
+echo "$KIOSKSH &" | sudo tee "$AUTOSTART"
+sudo chmod 644 "$AUTOSTART"
+sudo chown pi:pi "$AUTOSTART"
 
 # 11. .bash_profile für Autostart
 if ! grep -q "startx" "$PROFILE" 2>/dev/null; then
   echo '
 if [ -z "$DISPLAY" ] && [ "$(tty)" = "/dev/tty1" ]; then
   startx
-fi' >> "$PROFILE"
+fi' | sudo tee -a "$PROFILE"
+  sudo chown pi:pi "$PROFILE"
 fi
 
-# 12. CGI-Skripte (Unterordner!)
-sudo mkdir -p "$CGIDIR"
-
+# 12. CGI-Skripte (immer neu schreiben, ausführbar!)
 sudo tee "$CGIDIR/seturl.py" > /dev/null << EOF
 #!/usr/bin/env python3
 import cgi
@@ -121,7 +118,6 @@ if "url" in form:
 else:
     print("Fehler: Keine URL übergeben!")
 EOF
-sudo chmod +x "$CGIDIR/seturl.py"
 
 sudo tee "$CGIDIR/restart.py" > /dev/null << EOF
 #!/usr/bin/env python3
@@ -131,7 +127,6 @@ os.system("pkill surf")
 os.system("$KIOSKSH &")
 print("Browser neugestartet! <a href='/flugbuchviewer/'>Zurück</a>")
 EOF
-sudo chmod +x "$CGIDIR/restart.py"
 
 sudo tee "$CGIDIR/reload.py" > /dev/null << EOF
 #!/usr/bin/env python3
@@ -140,10 +135,11 @@ print("Content-Type: text/html\n")
 os.system("xdotool search --onlyvisible --class surf key F5")
 print("Browser neu geladen! <a href='/flugbuchviewer/'>Zurück</a>")
 EOF
-sudo chmod +x "$CGIDIR/reload.py"
 
-# 13. Admin-Oberfläche (im eigenen Ordner)
-sudo mkdir -p "$HTMLDIR"
+sudo chmod +x "$CGIDIR/"*.py
+sudo chown -R www-data:www-data "$CGIDIR"
+
+# 13. Admin-Oberfläche (im eigenen Ordner, Rechte!)
 sudo tee "$HTMLDIR/index.html" > /dev/null << 'EOF'
 <!DOCTYPE html>
 <html lang="de">
@@ -197,17 +193,16 @@ EOF
 
 sudo chown -R www-data:www-data "$HTMLDIR"
 
-# Hostname ändern (immer frisch setzen!)
+# Hostname ändern
 sudo hostnamectl set-hostname FlugbuchViewer
 sudo sed -i "s/127.0.1.1.*/127.0.1.1\tFlugbuchViewer/" /etc/hosts
 
 echo ""
 echo "-----------------------------------------"
 echo "FERTIG! Raspberry Pi ist jetzt ein FLUGBUCH-VIEWER!"
-echo "- Bootet direkt auf Desktop und Kiosk-Browser (mit surf)."
+echo "- Bootet direkt auf Desktop und Kiosk-Browser (surf)."
 echo "- Splash-Logo erscheint kurz am HDMI beim Start."
 echo "- Admin-Webinterface: http://<PI-IP>/flugbuchviewer/"
-echo "- Alles kann beliebig oft installiert werden."
 echo ""
 if ! pgrep -x Xorg >/dev/null; then
   echo "Desktop wurde gerade erst installiert. Jetzt wird automatisch neugestartet!"
