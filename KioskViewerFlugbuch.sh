@@ -2,7 +2,7 @@
 
 set -e
 
-echo "Flugbuch Viewer mit lighttpd und Admin-Webinterface wird installiert..."
+echo "Flugbuch Viewer mit lighttpd, Boot-Logo und Admin-Webinterface wird installiert..."
 
 # 0. Installationsverzeichnis festlegen
 INSTALLDIR="/opt/FlugbuchViewer"
@@ -16,9 +16,9 @@ if ! dpkg -l | grep -q raspberrypi-ui-mods; then
   sudo apt install --no-install-recommends -y raspberrypi-ui-mods lxsession lxde
 fi
 
-# 2. Pakete installieren
+# 2. Pakete installieren (inkl. fbi für Logo-Splash!)
 sudo apt update
-sudo apt install -y xserver-xorg x11-xserver-utils xinit openbox chromium-browser xdotool lighttpd python3
+sudo apt install -y xserver-xorg x11-xserver-utils xinit openbox chromium-browser xdotool lighttpd python3 fbi wget
 
 # 3. lighttpd CGI aktivieren
 sudo lighttpd-enable-mod cgi
@@ -31,7 +31,29 @@ if [ ! -f "$CONFIGFILE" ]; then
   echo "Konfigurationsdatei $CONFIGFILE angelegt."
 fi
 
-# 5. Kiosk-Startskript ins INSTALLDIR
+# 5. Logo herunterladen
+LOGO="$INSTALLDIR/LOGO.jpg"
+sudo wget -O "$LOGO" "https://github.com/stephanflug/digitales-Flugbuch/raw/main/Logo/LOGO.jpg"
+sudo chmod 644 "$LOGO"
+echo "Logo wurde heruntergeladen: $LOGO"
+
+# 6. Splash-Skript anlegen
+SPLASH="$INSTALLDIR/show-logo.sh"
+cat << SPLASH_EOF > "$SPLASH"
+#!/bin/bash
+sudo fbi -T 1 -d /dev/fb0 -noverbose -a "$LOGO"
+sleep 2
+sudo killall fbi
+SPLASH_EOF
+sudo chmod +x "$SPLASH"
+
+# 7. Splash-Skript per crontab beim Boot starten
+if ! sudo crontab -l 2>/dev/null | grep -q "$SPLASH"; then
+  (sudo crontab -l 2>/dev/null; echo "@reboot $SPLASH") | sudo crontab -
+  echo "Boot-Splash in Root-Crontab eingetragen."
+fi
+
+# 8. Kiosk-Startskript ins INSTALLDIR
 KIOSKSH="$INSTALLDIR/kiosk.sh"
 cat << EOS > "$KIOSKSH"
 #!/bin/bash
@@ -41,7 +63,7 @@ EOS
 chmod +x "$KIOSKSH"
 echo "Kiosk-Startskript $KIOSKSH angelegt."
 
-# 6. Openbox Autostart auf das neue Skript anpassen
+# 9. Openbox Autostart auf das neue Skript anpassen
 AUTOSTART="/home/pi/.config/openbox/autostart"
 mkdir -p "$(dirname "$AUTOSTART")"
 if ! grep -q "$KIOSKSH" "$AUTOSTART" 2>/dev/null; then
@@ -49,7 +71,7 @@ if ! grep -q "$KIOSKSH" "$AUTOSTART" 2>/dev/null; then
   echo "Autostart für Kiosk aktualisiert."
 fi
 
-# 7. Automatisches Starten von X (TTY1)
+# 10. Automatisches Starten von X (TTY1)
 PROFILE="/home/pi/.bash_profile"
 if ! grep -q "startx" "$PROFILE" 2>/dev/null; then
   echo '
@@ -59,10 +81,10 @@ fi' >> "$PROFILE"
   echo "Automatischer X-Start hinzugefügt."
 fi
 
-# 8. CGI-Skripte für Admin-Funktionen (nutzen INSTALLDIR)
+# 11. CGI-Skripte für Admin-Funktionen (nutzen INSTALLDIR)
 sudo mkdir -p /usr/lib/cgi-bin
 
-# 8a. URL speichern
+# 11a. URL speichern
 sudo tee /usr/lib/cgi-bin/seturl.py > /dev/null << EOF
 #!/usr/bin/env python3
 import cgi
@@ -77,7 +99,7 @@ else:
 EOF
 sudo chmod +x /usr/lib/cgi-bin/seturl.py
 
-# 8b. Browser neustarten
+# 11b. Browser neustarten
 sudo tee /usr/lib/cgi-bin/restart.py > /dev/null << EOF
 #!/usr/bin/env python3
 import os
@@ -88,7 +110,7 @@ print("Browser neugestartet! <a href='/'>Zurück</a>")
 EOF
 sudo chmod +x /usr/lib/cgi-bin/restart.py
 
-# 8c. Browser reload (F5)
+# 11c. Browser reload (F5)
 sudo tee /usr/lib/cgi-bin/reload.py > /dev/null << EOF
 #!/usr/bin/env python3
 import os
@@ -98,7 +120,7 @@ print("Browser neu geladen! <a href='/'>Zurück</a>")
 EOF
 sudo chmod +x /usr/lib/cgi-bin/reload.py
 
-# 9. Admin-Oberfläche (index.html)
+# 12. Admin-Oberfläche (index.html)
 sudo tee /var/www/html/index.html > /dev/null << 'EOF'
 <!DOCTYPE html>
 <html lang="de">
@@ -154,15 +176,13 @@ sudo chown www-data:www-data /var/www/html/index.html
 
 # Hostname ändern
 sudo hostnamectl set-hostname FlugbuchViewer
-
-# /etc/hosts anpassen (optional, für lokale Namensauflösung)
 sudo sed -i "s/127.0.1.1.*/127.0.1.1\tFlugbuchViewer/" /etc/hosts
 
 echo "Hostname wurde auf 'FlugbuchViewer' gesetzt."
 
 echo ""
 echo "FERTIG! Nach Neustart:"
-echo "- HDMI zeigt die Kiosk-URL (aus $CONFIGFILE)."
+echo "- Danach Kiosk-URL (aus $CONFIGFILE) im Browser."
 echo "- Admin-Webseite erreichbar unter: http://<PI-IP>/"
 echo "- Dort kann die URL geändert und der Browser neu gestartet werden."
 echo ""
