@@ -14,6 +14,19 @@ AUTOSTART="/home/pi/.config/openbox/autostart"
 PROFILE="/home/pi/.bash_profile"
 LIGHTDM_CONF="/etc/lightdm/lightdm.conf"
 
+echo "Prüfe auf Desktopumgebung..."
+if ! dpkg -l | grep -q raspberrypi-ui-mods; then
+  echo "-> Es wurde ein Lite-System erkannt! Installiere kompletten Desktop... (kann 10-15 Minuten dauern)"
+  sudo apt update
+  sudo apt install -y raspberrypi-ui-mods lxsession lxde xserver-xorg xinit openbox lightdm policykit-1
+  # Den Pi-User zur lightdm-Gruppe hinzufügen, falls nötig:
+  sudo usermod -a -G lightdm pi
+  # Sicherstellen, dass das Xauthority-Verzeichnis existiert
+  sudo mkdir -p /home/pi/.Xauthority
+  sudo chown pi:pi /home/pi/.Xauthority
+  echo "-> Desktop-Umgebung installiert."
+fi
+
 sudo mkdir -p "$INSTALLDIR"
 sudo chown pi:pi "$INSTALLDIR"
 
