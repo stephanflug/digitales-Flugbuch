@@ -4,40 +4,44 @@ set -e
 
 echo "Flugbuch Viewer mit lighttpd und Admin-Webinterface wird installiert..."
 
-# 0. Prüfen, ob Desktop-Umgebung installiert ist
+# 0. Installationsverzeichnis festlegen
+INSTALLDIR="/opt/FlugbuchViewer"
+sudo mkdir -p "$INSTALLDIR"
+sudo chown $USER:$USER "$INSTALLDIR"
+
+# 1. Prüfen, ob Desktop-Umgebung installiert ist
 if ! dpkg -l | grep -q raspberrypi-ui-mods; then
   echo "Desktop-Umgebung nicht gefunden. Installiere minimale Desktop-Oberfläche..."
   sudo apt update
   sudo apt install --no-install-recommends -y raspberrypi-ui-mods lxsession lxde
-
 fi
 
-# 1. Pakete installieren
+# 2. Pakete installieren
 sudo apt update
 sudo apt install -y xserver-xorg x11-xserver-utils xinit openbox chromium-browser xdotool lighttpd python3
 
-# 2. lighttpd CGI aktivieren
+# 3. lighttpd CGI aktivieren
 sudo lighttpd-enable-mod cgi
 sudo systemctl restart lighttpd
 
-# 3. Konfigurationsdatei für die Kiosk-URL
-CONFIGFILE="/home/pi/kiosk_url.txt"
+# 4. Konfigurationsdatei für die Kiosk-URL im INSTALLDIR
+CONFIGFILE="$INSTALLDIR/kiosk_url.txt"
 if [ ! -f "$CONFIGFILE" ]; then
   echo "http://example.com" > "$CONFIGFILE"
   echo "Konfigurationsdatei $CONFIGFILE angelegt."
 fi
 
-# 4. Kiosk-Startskript
-KIOSKSH="/home/pi/kiosk.sh"
-cat << 'EOS' > "$KIOSKSH"
+# 5. Kiosk-Startskript ins INSTALLDIR
+KIOSKSH="$INSTALLDIR/kiosk.sh"
+cat << EOS > "$KIOSKSH"
 #!/bin/bash
-URL=$(cat /home/pi/kiosk_url.txt)
-chromium-browser --noerrdialogs --disable-infobars --kiosk "$URL"
+URL=\$(cat "$CONFIGFILE")
+chromium-browser --noerrdialogs --disable-infobars --kiosk "\$URL"
 EOS
 chmod +x "$KIOSKSH"
 echo "Kiosk-Startskript $KIOSKSH angelegt."
 
-# 5. Openbox Autostart
+# 6. Openbox Autostart auf das neue Skript anpassen
 AUTOSTART="/home/pi/.config/openbox/autostart"
 mkdir -p "$(dirname "$AUTOSTART")"
 if ! grep -q "$KIOSKSH" "$AUTOSTART" 2>/dev/null; then
@@ -45,7 +49,7 @@ if ! grep -q "$KIOSKSH" "$AUTOSTART" 2>/dev/null; then
   echo "Autostart für Kiosk aktualisiert."
 fi
 
-# 6. Automatisches Starten von X (TTY1)
+# 7. Automatisches Starten von X (TTY1)
 PROFILE="/home/pi/.bash_profile"
 if ! grep -q "startx" "$PROFILE" 2>/dev/null; then
   echo '
@@ -55,18 +59,17 @@ fi' >> "$PROFILE"
   echo "Automatischer X-Start hinzugefügt."
 fi
 
-# 7. CGI-Skripte für Admin-Funktionen
-
+# 8. CGI-Skripte für Admin-Funktionen (nutzen INSTALLDIR)
 sudo mkdir -p /usr/lib/cgi-bin
 
-# 7a. URL speichern
+# 8a. URL speichern
 sudo tee /usr/lib/cgi-bin/seturl.py > /dev/null << EOF
 #!/usr/bin/env python3
 import cgi
 form = cgi.FieldStorage()
 print("Content-Type: text/html\n")
 if "url" in form:
-    with open("/home/pi/kiosk_url.txt", "w") as f:
+    with open("$CONFIGFILE", "w") as f:
         f.write(form["url"].value)
     print("URL gespeichert! <a href='/'>Zurück</a>")
 else:
@@ -74,18 +77,18 @@ else:
 EOF
 sudo chmod +x /usr/lib/cgi-bin/seturl.py
 
-# 7b. Browser neustarten
+# 8b. Browser neustarten
 sudo tee /usr/lib/cgi-bin/restart.py > /dev/null << EOF
 #!/usr/bin/env python3
 import os
 print("Content-Type: text/html\n")
 os.system("pkill chromium")
-os.system("/home/pi/kiosk.sh &")
+os.system("$KIOSKSH &")
 print("Browser neugestartet! <a href='/'>Zurück</a>")
 EOF
 sudo chmod +x /usr/lib/cgi-bin/restart.py
 
-# 7c. Browser reload (F5)
+# 8c. Browser reload (F5)
 sudo tee /usr/lib/cgi-bin/reload.py > /dev/null << EOF
 #!/usr/bin/env python3
 import os
@@ -95,7 +98,7 @@ print("Browser neu geladen! <a href='/'>Zurück</a>")
 EOF
 sudo chmod +x /usr/lib/cgi-bin/reload.py
 
-# 8. Admin-Oberfläche (index.html)
+# 9. Admin-Oberfläche (index.html)
 sudo tee /var/www/html/index.html > /dev/null << 'EOF'
 <!DOCTYPE html>
 <html lang="de">
