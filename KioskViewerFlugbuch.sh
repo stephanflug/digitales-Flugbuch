@@ -152,6 +152,14 @@ EOF
 
 sudo chown www-data:www-data /var/www/html/index.html
 
+# Hostname ändern
+sudo hostnamectl set-hostname FlugbuchViewer
+
+# /etc/hosts anpassen (optional, für lokale Namensauflösung)
+sudo sed -i "s/127.0.1.1.*/127.0.1.1\tFlugbuchViewer/" /etc/hosts
+
+echo "Hostname wurde auf 'FlugbuchViewer' gesetzt."
+
 echo ""
 echo "FERTIG! Nach Neustart:"
 echo "- HDMI zeigt die Kiosk-URL (aus $CONFIGFILE)."
