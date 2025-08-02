@@ -2,7 +2,7 @@
 
 set -e
 
-echo "FlugbuchViewer Installation (SELF-HEALING, IDIOTENSICHER)..."
+echo "FlugbuchViewer Installation (SELF-HEALING)..."
 
 INSTALLDIR="/opt/FlugbuchViewer"
 LOGO_URL="https://github.com/stephanflug/digitales-Flugbuch/raw/main/Logo/LOGO.jpg"
