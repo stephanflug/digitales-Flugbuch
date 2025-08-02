@@ -24,6 +24,26 @@ if ! dpkg -l | grep -q raspberrypi-ui-mods; then
   sudo apt install --no-install-recommends -y raspberrypi-ui-mods lxsession lxde
 fi
 
+# 1. Setze Boot-Target auf grafische Oberfläche (Desktop)
+sudo systemctl set-default graphical.target
+
+# 2. LightDM-Konfiguration für Autologin als User "pi"
+if [ -f /etc/lightdm/lightdm.conf ]; then
+  sudo sed -i '/^autologin-user=/d' /etc/lightdm/lightdm.conf
+  sudo sed -i '/^\[Seat:\*\]/a autologin-user=pi' /etc/lightdm/lightdm.conf
+else
+  sudo tee /etc/lightdm/lightdm.conf > /dev/null <<EOF
+[Seat:*]
+autologin-user=pi
+EOF
+fi
+
+# 3. Desktop-Pakete (ggf. erneut) installieren/reparieren
+sudo apt update
+sudo apt install --reinstall -y raspberrypi-ui-mods lxsession lxde xserver-xorg xinit openbox lightdm
+
+echo "Desktop-Start und Autologin für pi wurden fest eingestellt."
+
 # 2. Nötige Pakete
 sudo apt update
 sudo apt install -y xserver-xorg x11-xserver-utils xinit openbox chromium-browser xdotool lighttpd python3 fbi wget lsb-release
