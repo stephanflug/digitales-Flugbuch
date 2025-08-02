@@ -59,32 +59,138 @@ app = Flask(__name__)
 
 TEMPLATE = """
 <!DOCTYPE html>
-<html>
+<html lang="de">
 <head>
-    <title>Kiosk Verwaltung</title>
+    <meta charset="utf-8">
+    <title>Flugbuch Viewer Verwaltung</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
     <style>
-        body { font-family: sans-serif; background: #f5f5f5; padding: 30px; }
-        input[type=text] { width: 400px; padding: 5px; }
-        button { padding: 10px 20px; margin: 5px;}
+        body {
+            background: #181f29;
+            color: #f2f2f2;
+            font-family: 'Roboto', Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+        .container {
+            background: #232b3a;
+            padding: 2.5rem 2.5rem 1.5rem 2.5rem;
+            border-radius: 1.25rem;
+            margin-top: 3rem;
+            box-shadow: 0 4px 32px rgba(0,0,0,0.22);
+            width: 100%;
+            max-width: 460px;
+        }
+        h1 {
+            font-size: 2.1rem;
+            font-weight: 700;
+            margin-bottom: 0.4em;
+            text-align: center;
+            letter-spacing: 0.02em;
+        }
+        h2 {
+            font-size: 1.12rem;
+            font-weight: 400;
+            text-align: center;
+            margin-top: 0.4em;
+            margin-bottom: 1.7em;
+            color: #aaa;
+        }
+        label {
+            font-weight: 500;
+            margin-bottom: 0.6em;
+            display: block;
+        }
+        input[type=text] {
+            width: 95%;
+            padding: 0.5em;
+            font-size: 1em;
+            border-radius: 0.5em;
+            border: none;
+            margin-bottom: 1.3em;
+            outline: none;
+            background: #1b2230;
+            color: #eee;
+        }
+        button {
+            background: #448aff;
+            color: #fff;
+            font-size: 1.03em;
+            padding: 0.65em 1.7em;
+            margin: 0.2em 0.3em;
+            border: none;
+            border-radius: 0.5em;
+            font-weight: 600;
+            letter-spacing: 0.01em;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        button:hover {
+            background: #005ee6;
+        }
+        .actions {
+            display: flex;
+            justify-content: center;
+            gap: 0.5em;
+            margin-bottom: 1.2em;
+        }
+        .status {
+            text-align: center;
+            margin-top: 0.7em;
+            font-size: 1.07em;
+            color: #60e888;
+        }
+        .footer {
+            margin-top: 1.7em;
+            text-align: center;
+            color: #777;
+            font-size: 0.98em;
+        }
+        .footer a {
+            color: #448aff;
+            text-decoration: none;
+            margin-left: 0.4em;
+            font-weight: 500;
+        }
+        .version {
+            display: block;
+            margin-top: 0.3em;
+            font-size: 0.93em;
+            color: #6da5ff;
+            font-weight: 500;
+        }
     </style>
 </head>
 <body>
-    <h2>Kiosk-URL einstellen</h2>
-    <form method="POST">
-        <input type="text" name="url" value="{{ url }}" placeholder="Neue Kiosk-URL eingeben">
-        <button type="submit">URL speichern</button>
-    </form>
-    <h3>Weitere Aktionen</h3>
-    <form method="POST" action="/restart">
-        <button type="submit">Browser neustarten</button>
-    </form>
-    <form method="POST" action="/refresh">
-        <button type="submit">Seite aktualisieren (Reload)</button>
-    </form>
-    <p>Aktuelle URL: <b>{{ url }}</b></p>
+    <div class="container">
+        <h1>Flugbuch Viewer</h1>
+        <h2>Powerby Ebner Stephan</h2>
+        <form method="POST">
+            <label for="url">Kiosk-URL ändern:</label>
+            <input type="text" id="url" name="url" value="{{ url }}" placeholder="Neue Kiosk-URL eingeben">
+            <div class="actions">
+                <button type="submit">URL speichern</button>
+                <button type="submit" formaction="/restart">Browser neustarten</button>
+                <button type="submit" formaction="/refresh">Seite neu laden</button>
+            </div>
+        </form>
+        <div class="status">
+            Aktuelle Kiosk-URL:<br>
+            <b>{{ url }}</b>
+        </div>
+    </div>
+    <div class="footer">
+        <span class="version">Version 1.0</span>
+        <span>|</span>
+        <a href="https://github.com/stephanflug/digitales-Flugbuch" target="_blank">GitHub: digitales-Flugbuch</a>
+    </div>
 </body>
 </html>
 """
+
 
 def get_url():
     if os.path.exists(CONFIGFILE):
