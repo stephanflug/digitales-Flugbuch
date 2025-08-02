@@ -2,7 +2,7 @@
 
 set -e
 
-echo "Kiosk-Setup mit lighttpd Admin-Webinterface wird installiert..."
+echo "Flugbuch Viewer mit lighttpd und Admin-Webinterface wird installiert..."
 
 # 0. Prüfen, ob Desktop-Umgebung installiert ist
 if ! dpkg -l | grep -q raspberrypi-ui-mods; then
