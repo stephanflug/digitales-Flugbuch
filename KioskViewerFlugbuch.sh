@@ -21,21 +21,11 @@ if ! dpkg -l | grep -q raspberrypi-ui-mods; then
   sudo apt install -y raspberrypi-ui-mods lxsession lxde xserver-xorg xinit openbox lightdm policykit-1
   # Den Pi-User zur lightdm-Gruppe hinzufügen, falls nötig:
   sudo usermod -a -G lightdm pi
-  # Sicherstellen, dass das Xauthority-Verzeichnis existiert
-  sudo mkdir -p /home/pi/.Xauthority
-  sudo chown pi:pi /home/pi/.Xauthority
   echo "-> Desktop-Umgebung installiert."
 fi
 
 sudo mkdir -p "$INSTALLDIR"
 sudo chown pi:pi "$INSTALLDIR"
-
-# 1. Desktop-Umgebung sicherstellen
-if ! dpkg -l | grep -q raspberrypi-ui-mods; then
-  echo "Desktop-Umgebung nicht gefunden. Installiere..."
-  sudo apt update
-  sudo apt install --no-install-recommends -y raspberrypi-ui-mods lxsession lxde
-fi
 
 # 1. Setze Boot-Target auf grafische Oberfläche (Desktop)
 sudo systemctl set-default graphical.target
@@ -57,26 +47,25 @@ sudo apt install --reinstall -y raspberrypi-ui-mods lxsession lxde xserver-xorg 
 
 echo "Desktop-Start und Autologin für pi wurden fest eingestellt."
 
-# 2. Nötige Pakete
-sudo apt update
-sudo apt install -y xserver-xorg x11-xserver-utils xinit openbox chromium-browser xdotool lighttpd python3 fbi wget lsb-release
+# 4. Nötige Kiosk-Pakete
+sudo apt install -y x11-xserver-utils chromium-browser xdotool lighttpd python3 fbi wget lsb-release
 
-# 3. lighttpd & CGI
+# 5. lighttpd & CGI
 sudo lighttpd-enable-mod cgi
 sudo systemctl restart lighttpd
 
-# 4. Kiosk-URL config (immer überschreiben, falls leer)
+# 6. Kiosk-URL config (immer überschreiben, falls leer)
 if ! grep -q "http" "$CONFIGFILE" 2>/dev/null; then
   echo "http://example.com" > "$CONFIGFILE"
   echo "Konfigurationsdatei $CONFIGFILE gesetzt."
 fi
 
-# 5. Logo laden (immer neu, falls leer)
+# 7. Logo laden (immer neu)
 sudo wget -q -O "$LOGO" "$LOGO_URL"
 sudo chmod 644 "$LOGO"
 echo "Logo aktualisiert: $LOGO"
 
-# 6. Splash-Skript anlegen (wird immer neu geschrieben)
+# 8. Splash-Skript anlegen
 cat << SPLASH_EOF > "$SPLASH"
 #!/bin/bash
 sudo fbi -T 1 -d /dev/fb0 -noverbose -a "$LOGO"
@@ -90,13 +79,7 @@ if ! sudo crontab -l 2>/dev/null | grep -q "$SPLASH"; then
   echo "Boot-Splash in Root-Crontab eingetragen."
 fi
 
-# 7. Desktop Autologin + Boot zum Desktop erzwingen
-sudo raspi-config nonint do_boot_behaviour B4 || true
-if ! grep -q "autologin-user=pi" "$LIGHTDM_CONF" 2>/dev/null; then
-  sudo sed -i '/^\[Seat:\*\]/a autologin-user=pi' "$LIGHTDM_CONF" 2>/dev/null || true
-fi
-
-# 8. Kiosk-Startskript schreiben (immer frisch!)
+# 9. Kiosk-Startskript schreiben (immer frisch!)
 cat << EOS > "$KIOSKSH"
 #!/bin/bash
 for i in {1..20}; do
@@ -109,12 +92,12 @@ chromium-browser --noerrdialogs --disable-infobars --kiosk "\$URL"
 EOS
 chmod +x "$KIOSKSH"
 
-# 9. Openbox Autostart überschreiben (immer frisch, alles andere raus!)
+# 10. Openbox Autostart überschreiben (immer frisch)
 mkdir -p "$(dirname "$AUTOSTART")"
 echo "$KIOSKSH &" > "$AUTOSTART"
 chmod 644 "$AUTOSTART"
 
-# 10. .bash_profile für Autostart
+# 11. .bash_profile für Autostart
 if ! grep -q "startx" "$PROFILE" 2>/dev/null; then
   echo '
 if [ -z "$DISPLAY" ] && [ "$(tty)" = "/dev/tty1" ]; then
@@ -122,7 +105,7 @@ if [ -z "$DISPLAY" ] && [ "$(tty)" = "/dev/tty1" ]; then
 fi' >> "$PROFILE"
 fi
 
-# 11. CGI-Skripte (immer neu schreiben)
+# 12. CGI-Skripte (immer neu schreiben)
 sudo mkdir -p /usr/lib/cgi-bin
 
 sudo tee /usr/lib/cgi-bin/seturl.py > /dev/null << EOF
@@ -158,7 +141,7 @@ print("Browser neu geladen! <a href='/'>Zurück</a>")
 EOF
 sudo chmod +x /usr/lib/cgi-bin/reload.py
 
-# 12. Admin-Oberfläche (immer neu schreiben)
+# 13. Admin-Oberfläche (immer neu schreiben)
 sudo tee /var/www/html/index.html > /dev/null << 'EOF'
 <!DOCTYPE html>
 <html lang="de">
@@ -230,4 +213,3 @@ if ! pgrep -x Xorg >/dev/null; then
   sudo reboot
   exit 0
 fi
-
