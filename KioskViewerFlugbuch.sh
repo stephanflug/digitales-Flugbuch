@@ -1,10 +1,18 @@
 #!/bin/bash
 
-# --- Kiosk mit Admin-Webinterface (ohne Port) ---
+# --- Kiosk mit Admin-Webinterface (ohne Port) inkl. Desktop-Check ---
 
 set -e
 
 echo "Kiosk-Setup mit Admin-Webinterface wird installiert..."
+
+# 0. Prüfen, ob Desktop-Umgebung installiert ist
+if ! dpkg -l | grep -q raspberrypi-ui-mods; then
+  echo "Desktop-Umgebung nicht gefunden. Installiere minimale Desktop-Oberfläche..."
+  sudo apt update
+  sudo apt install --no-install-recommends -y raspberrypi-ui-mods lxsession lxde
+  echo "Desktop-Oberfläche installiert. Bitte ggf. nach Abschluss neu starten!"
+fi
 
 # 1. Pakete installieren
 sudo apt update
@@ -241,3 +249,4 @@ echo "- Admin-Webseite erreichbar unter: http://<PI-IP> (ohne Port!)"
 echo "- Dort kann die URL geändert und der Browser neu gestartet werden."
 echo ""
 echo ">> Bitte jetzt den Raspberry Pi neustarten! <<"
+
