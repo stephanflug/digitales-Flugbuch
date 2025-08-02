@@ -21,6 +21,11 @@ sudo chown -R www-data:www-data "$HTMLDIR" "$CGIDIR"
 sudo apt update
 sudo apt install -y --no-install-recommends xserver-xorg xinit surf unclutter lighttpd python3 fbi wget
 
+# 2a. Xwrapper-Config für systemd (macht "startx" für User pi möglich!)
+if [ ! -f /etc/X11/Xwrapper.config ]; then
+  echo -e "allowed_users=anybody\nneeds_root_rights=yes" | sudo tee /etc/X11/Xwrapper.config
+fi
+
 # 3. lighttpd & CGI
 sudo lighttpd-enable-mod cgi
 sudo systemctl restart lighttpd
@@ -48,6 +53,7 @@ fi
 if [ ! -f "$CONFIGFILE" ]; then
   echo "http://example.com" > "$CONFIGFILE"
 fi
+chown pi:pi "$CONFIGFILE"
 
 # 7. Kiosk-Startskript (surf, Maus verstecken)
 cat <<EOS > "$KIOSKSH"
@@ -68,7 +74,11 @@ After=network.target
 
 [Service]
 User=pi
+PAMName=login
 Environment=DISPLAY=:0
+Environment=XAUTHORITY=/home/pi/.Xauthority
+TTYPath=/dev/tty1
+StandardInput=tty
 ExecStart=/usr/bin/startx $KIOSKSH
 Restart=always
 
