@@ -38,11 +38,12 @@
     },
     {
       "datei": "FlugbuchViewer.sh",
-      "beschreibung": "Nicht für den PI Zero 2.Erst ab dem Pi3 besser Pi 4 Aktuell in der Testphase",
+      "beschreibung": "Richtet einen Kiosk-Modus für den Flugbuch-Viewer auf Raspberry Pi 3 oder neuer ein (nicht für Zero/Zero 2!). Automatischer Start des Browsers im Vollbild, Web-UI zur bequemen Änderung der Kiosk-URL, Watchdog für Neustart bei Fehlern. Der interne HDMI-Anschluss kann für einen externen Bildschirm genutzt werden, um die aktuell angemeldeten Piloten anzuzeigen.",
       "version": "1.0",
       "autor": "Ebner Stephan"
     }
   ]
 }
+
 
 
