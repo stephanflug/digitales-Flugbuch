@@ -31,10 +31,11 @@
       "autor": "Ebner Stephan"
     },
     {
-      "datei": "uninstall_WireGuardClient.sh",
+      "datei": "uninstall_wireguard.sh",
       "beschreibung": "Deinstalliert den WireGuard Client vollständig, entfernt alle zugehörigen Dateien, Dienste und Berechtigungen und löscht sich anschließend selbst.",
       "version": "1.0",
       "autor": "Ebner Stephan"
     }
   ]
 }
+
