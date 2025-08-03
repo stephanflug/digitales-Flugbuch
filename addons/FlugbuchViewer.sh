@@ -34,20 +34,40 @@ ExecStart=
 ExecStart=-/sbin/agetty --autologin $USERNAME --noclear %I \$TERM
 EOF
 
-# 3. Watchdog-Skript für Chromium-Kiosk anlegen
+# 3. Watchdog-Skript für Chromium-Kiosk anlegen (mit HTTP-Check!)
 WATCHDOG="$HOME/kiosk_watchdog.sh"
 sudo tee "$WATCHDOG" > /dev/null <<'EOF'
 #!/bin/bash
 export DISPLAY=:0
 URL="$(cat /etc/kiosk_url.conf)"
+LOGFILE="/var/log/kiosk_browser.log"
 
 while true; do
-  chromium-browser --noerrdialogs --disable-infobars --kiosk "$URL"
+  echo "[$(date +'%Y-%m-%d %H:%M:%S')] Starte Chromium ($URL)" >> "$LOGFILE"
+  chromium-browser --noerrdialogs --disable-infobars --kiosk "$URL" >> "$LOGFILE" 2>&1 &
+  CHR_PID=$!
+
+  # Prüfe alle 10 Sekunden, ob die Seite erreichbar ist
+  while kill -0 $CHR_PID 2>/dev/null; do
+    if ! curl -s --head --max-time 5 "$URL" | grep -q "200 OK"; then
+      echo "[$(date +'%Y-%m-%d %H:%M:%S')] Seite nicht erreichbar, Browser wird neugestartet" >> "$LOGFILE"
+      kill $CHR_PID
+      sleep 2
+      break
+    fi
+    sleep 10
+  done
+
   sleep 5
 done
 EOF
 sudo chmod +x "$WATCHDOG"
 sudo chown $USERNAME:$USERNAME "$WATCHDOG"
+
+# 3b. Logfile für Watchdog anlegen (Rechte setzen, falls noch nicht vorhanden)
+sudo touch /var/log/kiosk_browser.log
+sudo chown $USERNAME:$USERNAME /var/log/kiosk_browser.log
+sudo chmod 664 /var/log/kiosk_browser.log
 
 # 4. .xinitrc für Splash-Logo + Watchdog anlegen
 XINITRC="$HOME/.xinitrc"
@@ -83,11 +103,11 @@ sudo chown $USERNAME:$USERNAME "$BASH_PROFILE"
 
 # 6. CGI-Skript für Web-URL-Änderung installieren
 CGI="/usr/lib/cgi-bin/set_kiosk_url.sh"
-sudo tee "$CGI" > /dev/null <<EOF
+sudo tee "$CGI" > /dev/null <<'EOF'
 #!/bin/bash
 
 LOGFILE="/var/log/set_kiosk_url.log"
-exec > >(tee -a "\$LOGFILE")
+exec > >(tee -a "$LOGFILE")
 exec 2>&1
 
 echo "Content-Type: text/event-stream"
@@ -102,39 +122,43 @@ echo ""
 
 # === Zero/Zero2-Erkennung ===
 if grep -qi "Zero" /proc/device-tree/model 2>/dev/null; then
-  echo "data: ❗️ Achtung: Pi Zero oder Zero 2 erkannt."
+  echo "data: Achtung: Pi Zero oder Zero 2 erkannt."
   echo "data: Dieses Kiosk-Setup ist auf Pi Zero/Zero2 nicht unterstützt und wurde nicht installiert."
   echo "data: Bitte verwende einen leistungsfähigeren Pi (z.B. 3, 4, 5)."
   exit 0
 fi
 
 CONFIG="/etc/kiosk_url.conf"
-URL_DEFAULT="http://localhost:1880/home"
+URL_DEFAULT="http://localhost:1880/viewerAT"
 
-# POST-Daten einlesen (bis Leerzeile)
-POSTDATA=""
-while read LINE; do
-  [ "\$LINE" == "" ] && break
-done
-read POSTDATA
+# POST-Daten einlesen
+POSTDATA=$(cat)
 
 parse_post() {
-  echo "\$POSTDATA" | sed -n 's/^url=\\(.*\\)\$/\\1/p' | sed 's/%3A/:/g; s/%2F/\\//g'
+  echo "$POSTDATA" | sed -n 's/^url=\(.*\)$/\1/p' | sed 's/%3A/:/g; s/%2F/\//g'
 }
-KIOSK_URL=\$(parse_post)
-[ -z "\$KIOSK_URL" ] && KIOSK_URL="\$URL_DEFAULT"
+KIOSK_URL=$(parse_post)
+[ -z "$KIOSK_URL" ] && KIOSK_URL="$URL_DEFAULT"
 
-echo "data: Setze Kiosk-URL: \$KIOSK_URL"
+echo "data: Setze Kiosk-URL: $KIOSK_URL"
 echo ""
-echo "\$KIOSK_URL" | sudo tee "\$CONFIG" > /dev/null
+echo "$KIOSK_URL" | sudo tee "$CONFIG" > /dev/null
 
 echo "data: Kiosk-URL gesetzt. Nach dem nächsten Reboot startet Chromium mit dieser URL."
 echo ""
 EOF
-
 sudo chmod +x "$CGI"
 
-# 7. HTML-Interface anlegen
+# 7. CGI-Skript für Loganzeige
+CGI_LOG="/usr/lib/cgi-bin/kiosk_log.sh"
+sudo tee "$CGI_LOG" > /dev/null <<'EOF'
+#!/bin/bash
+echo "Content-type: text/plain"
+echo ""
+tail -n 200 /var/log/kiosk_browser.log 2>/dev/null || echo "Noch keine Logdatei gefunden."
+EOF
+sudo chmod +x "$CGI_LOG"
+
 # 8. HTML-Interface anlegen (mit Log-Funktion!)
 HTML="/var/www/html/set_kiosk_url.html"
 sudo tee "$HTML" > /dev/null <<'EOF'
@@ -259,9 +283,9 @@ sudo tee "$HTML" > /dev/null <<'EOF'
 </head>
 <body>
 <div class="container">
-  <h1>Kiosk-Modus aktivieren</h1>
+  <h1>Kiosk-Modus</h1>
   <div id="zeroWarn" class="warn" style="display:none;">
-    ❗️ <b>Dieses Setup funktioniert nicht auf Raspberry Pi Zero / Zero 2!</b><br>
+    <b>Dieses Setup funktioniert nicht auf Raspberry Pi Zero / Zero 2!</b><br>
     Bitte nutze einen Pi 3, 4 oder neuer.
   </div>
   <form id="kioskForm">
@@ -316,17 +340,17 @@ function kioskLog() {
 </script>
 </body>
 </html>
-
 EOF
-# 8. Sudoers-Konfiguration
-SUDOERS_LINE="www-data ALL=(ALL) NOPASSWD: /usr/bin/tee, /usr/bin/chmod, /usr/bin/chown, /bin/sed"
+
+# 9. Sudoers-Konfiguration
+SUDOERS_LINE="www-data ALL=(ALL) NOPASSWD: /usr/bin/tee, /usr/bin/chmod, /usr/bin/chown, /bin/sed, /usr/bin/tail"
 if ! sudo grep -qF "$SUDOERS_LINE" /etc/sudoers; then
   echo "$SUDOERS_LINE" | sudo tee -a /etc/sudoers > /dev/null
 fi
 
-# 9. Button in index.html einfügen
+# 10. Button in index.html einfügen
 INDEX_HTML="/var/www/html/index.html"
-LINK='<button type="button" onclick="window.location.href='\''set_kiosk_url.html'\''">Kiosk-Modus aktivieren</button>'
+LINK='<button type="button" onclick="window.location.href='\''set_kiosk_url.html'\''">Kiosk-Modus</button>'
 if ! sudo grep -q "set_kiosk_url.html" "$INDEX_HTML"; then
   echo "Füge Kiosk-Modus-Button zur index.html hinzu..."
   sudo sed -i "/<div class=\"button-container\">/,/<\/div>/ {
@@ -335,7 +359,5 @@ if ! sudo grep -q "set_kiosk_url.html" "$INDEX_HTML"; then
 fi
 
 echo ""
-echo "Fertig! Kiosk-Setup wurde installiert."
+echo "Fertig! Kiosk-Setup wurde installiert. Bitte das ganze System neustarten!"
 echo "Öffne im Browser: http://<IP>/set_kiosk_url.html"
-
-
