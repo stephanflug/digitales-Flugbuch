@@ -1,6 +1,9 @@
 #!/bin/bash
 set -e
 
+USERNAME="flugbuch"
+HOME="/home/$USERNAME"
+
 # === 0. Prüfe, ob das ein Pi Zero oder Zero 2 ist ===
 IS_ZERO=0
 if grep -qi "Zero" /proc/device-tree/model 2>/dev/null; then
@@ -17,10 +20,34 @@ if [ "$IS_ZERO" = "1" ]; then
   exit 1
 fi
 
-USERNAME="flugbuch"
-HOME="/home/$USERNAME"
+# 1. Pakete für Kiosk-Modus installieren
+sudo apt update
+sudo apt install --no-install-recommends -y \
+  xserver-xorg x11-xserver-utils xinit openbox chromium-browser unclutter \
+  lighttpd
 
-# 1. CGI-Skript installieren
+# 2. Autologin für flugbuch auf tty1 einrichten
+sudo mkdir -p /etc/systemd/system/getty@tty1.service.d
+sudo tee /etc/systemd/system/getty@tty1.service.d/autologin.conf > /dev/null <<EOF
+[Service]
+ExecStart=
+ExecStart=-/sbin/agetty --autologin $USERNAME --noclear %I \$TERM
+EOF
+
+# 3. .bash_profile für Auto-Kiosk-Start (nur auf tty1, nicht SSH)
+BASH_PROFILE="$HOME/.bash_profile"
+sudo tee "$BASH_PROFILE" > /dev/null <<EOF
+# Starte Kiosk-Service nur am echten Terminal (HDMI), nicht bei SSH
+if [ -z "\$SSH_CONNECTION" ] && [ "\$(tty)" = "/dev/tty1" ]; then
+  # Starte Kiosk nur, wenn er nicht schon läuft
+  if ! systemctl is-active --quiet kiosk.service; then
+    sudo systemctl start kiosk.service
+  fi
+fi
+EOF
+sudo chown $USERNAME:$USERNAME "$BASH_PROFILE"
+
+# 4. CGI-Skript für Web-URL-Änderung installieren
 CGI="/usr/lib/cgi-bin/set_kiosk_url.sh"
 sudo tee "$CGI" > /dev/null <<EOF
 #!/bin/bash
@@ -115,7 +142,7 @@ EOF
 
 sudo chmod +x "$CGI"
 
-# 2. HTML-Interface anlegen
+# 5. HTML-Interface anlegen
 HTML="/var/www/html/set_kiosk_url.html"
 sudo tee "$HTML" > /dev/null <<'EOF'
 <!DOCTYPE html>
@@ -187,13 +214,13 @@ document.getElementById('kioskForm').onsubmit = function(e) {
 </html>
 EOF
 
-# 3. Sudoers-Konfiguration
+# 6. Sudoers-Konfiguration
 SUDOERS_LINE="www-data ALL=(ALL) NOPASSWD: /usr/bin/tee, /usr/bin/chmod, /usr/bin/chown, /bin/sed, /bin/systemctl"
 if ! sudo grep -qF "$SUDOERS_LINE" /etc/sudoers; then
   echo "$SUDOERS_LINE" | sudo tee -a /etc/sudoers > /dev/null
 fi
 
-# 4. Button in index.html einfügen
+# 7. Button in index.html einfügen
 INDEX_HTML="/var/www/html/index.html"
 LINK='<button type="button" onclick="window.location.href='\''set_kiosk_url.html'\''">Kiosk-Modus aktivieren</button>'
 if ! sudo grep -q "set_kiosk_url.html" "$INDEX_HTML"; then
@@ -203,12 +230,8 @@ if ! sudo grep -q "set_kiosk_url.html" "$INDEX_HTML"; then
   }" "$INDEX_HTML"
 fi
 
-# 5. Pakete für Kiosk-Modus installieren
-sudo apt update
-sudo apt install --no-install-recommends -y xserver-xorg x11-xserver-utils xinit openbox chromium-browser unclutter
-
 echo ""
 echo "Fertig! Kiosk-Setup wurde installiert."
 echo "Öffne im Browser: http://<IP>/set_kiosk_url.html"
 echo ""
-echo "Trage die gewünschte URL ein, dann nach dem nächsten Neustart startet dein Pi im Kiosk-Browser."
+echo "Trage die gewünschte URL ein, dann nach dem nächsten Neustart startet dein Pi im Kiosk-Browser automatisch."
