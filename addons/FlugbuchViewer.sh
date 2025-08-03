@@ -21,12 +21,20 @@ fi
 CGI="/usr/lib/cgi-bin/set_kiosk_url.sh"
 cat > "$CGI" <<'EOF'
 #!/bin/bash
+
+LOGFILE="/var/log/set_kiosk_url.log"
+exec > >(tee -a "$LOGFILE")
+exec 2>&1
+
 echo "Content-Type: text/event-stream"
 echo "Cache-Control: no-cache"
 echo "Connection: keep-alive"
 echo ""
 
-set -e
+set -x
+
+echo "data: Starte Kiosk-Setup..."
+echo ""
 
 # === Zero/Zero2-Erkennung ===
 if grep -qi "Zero" /proc/device-tree/model 2>/dev/null; then
@@ -35,10 +43,6 @@ if grep -qi "Zero" /proc/device-tree/model 2>/dev/null; then
   echo "data: Bitte verwende einen leistungsfähigeren Pi (z.B. 3, 4, 5)."
   exit 0
 fi
-
-LOGFILE="/var/log/set_kiosk_url.log"
-exec > >(tee -a "$LOGFILE")
-exec 2>&1
 
 CONFIG="/etc/kiosk_url.conf"
 URL_DEFAULT="http://localhost:8080"
@@ -166,13 +170,13 @@ document.getElementById('kioskForm').onsubmit = function(e) {
 </html>
 EOF
 
-# === 3. Sudoers-Konfiguration ===
+# 3. Sudoers-Konfiguration
 SUDOERS_LINE="www-data ALL=(ALL) NOPASSWD: /usr/bin/tee, /usr/bin/chmod, /usr/bin/chown, /bin/sed"
 if ! grep -qF "$SUDOERS_LINE" /etc/sudoers; then
   echo "$SUDOERS_LINE" | sudo tee -a /etc/sudoers > /dev/null
 fi
 
-# === 4. Button in index.html einfügen ===
+# 4. Button in index.html einfügen
 INDEX_HTML="/var/www/html/index.html"
 LINK='<button type="button" onclick="window.location.href='\''set_kiosk_url.html'\''">Kiosk-Modus aktivieren</button>'
 if ! grep -q "set_kiosk_url.html" "$INDEX_HTML"; then
@@ -182,7 +186,7 @@ if ! grep -q "set_kiosk_url.html" "$INDEX_HTML"; then
   }" "$INDEX_HTML"
 fi
 
-# === 5. Pakete für Kiosk-Modus installieren ===
+# 5. Pakete für Kiosk-Modus installieren
 sudo apt update
 sudo apt install --no-install-recommends -y xserver-xorg x11-xserver-utils xinit openbox chromium-browser unclutter
 
