@@ -19,7 +19,7 @@ fi
 
 # 1. CGI-Skript installieren
 CGI="/usr/lib/cgi-bin/set_kiosk_url.sh"
-cat > "$CGI" <<'EOF'
+sudo tee "$CGI" > /dev/null <<'EOF'
 #!/bin/bash
 
 LOGFILE="/var/log/set_kiosk_url.log"
@@ -96,11 +96,11 @@ echo "data: Kiosk-Modus aktiviert! Neustart nötig."
 echo ""
 EOF
 
-chmod +x "$CGI"
+sudo chmod +x "$CGI"
 
 # 2. HTML-Interface anlegen
 HTML="/var/www/html/set_kiosk_url.html"
-cat > "$HTML" <<'EOF'
+sudo tee "$HTML" > /dev/null <<'EOF'
 <!DOCTYPE html>
 <html lang="de">
 <head>
@@ -172,16 +172,16 @@ EOF
 
 # 3. Sudoers-Konfiguration
 SUDOERS_LINE="www-data ALL=(ALL) NOPASSWD: /usr/bin/tee, /usr/bin/chmod, /usr/bin/chown, /bin/sed"
-if ! grep -qF "$SUDOERS_LINE" /etc/sudoers; then
+if ! sudo grep -qF "$SUDOERS_LINE" /etc/sudoers; then
   echo "$SUDOERS_LINE" | sudo tee -a /etc/sudoers > /dev/null
 fi
 
 # 4. Button in index.html einfügen
 INDEX_HTML="/var/www/html/index.html"
 LINK='<button type="button" onclick="window.location.href='\''set_kiosk_url.html'\''">Kiosk-Modus aktivieren</button>'
-if ! grep -q "set_kiosk_url.html" "$INDEX_HTML"; then
+if ! sudo grep -q "set_kiosk_url.html" "$INDEX_HTML"; then
   echo "Füge Kiosk-Modus-Button zur index.html hinzu..."
-  sed -i "/<div class=\"button-container\">/,/<\/div>/ {
+  sudo sed -i "/<div class=\"button-container\">/,/<\/div>/ {
     /<\/div>/ i \\        $LINK
   }" "$INDEX_HTML"
 fi
