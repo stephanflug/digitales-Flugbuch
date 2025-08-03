@@ -87,13 +87,27 @@ EOT
   sudo chown \$USERNAME:\$USERNAME "\$XINITRC"
 fi
 
-# Füge rc.local-Autostart ein, falls nicht vorhanden:
-RCLOCAL="/etc/rc.local"
-if ! grep -q "startx" "\$RCLOCAL"; then
-  sudo sed -i '/^exit 0/i\
-sudo -u \$USERNAME startx &\
-' "\$RCLOCAL"
-fi
+# === systemd-Service für Kiosk-Modus ===
+SERVICE="/etc/systemd/system/kiosk.service"
+sudo tee "\$SERVICE" > /dev/null <<EOT2
+[Unit]
+Description=Kiosk Browser Autostart (via .xinitrc)
+After=network.target
+
+[Service]
+User=\$USERNAME
+Environment=DISPLAY=:0
+Type=simple
+ExecStart=/usr/bin/startx
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
+EOT2
+
+sudo systemctl daemon-reload
+sudo systemctl enable kiosk.service
+sudo systemctl restart kiosk.service
 
 echo "data: Kiosk-Modus aktiviert! Neustart nötig."
 echo ""
@@ -174,7 +188,7 @@ document.getElementById('kioskForm').onsubmit = function(e) {
 EOF
 
 # 3. Sudoers-Konfiguration
-SUDOERS_LINE="www-data ALL=(ALL) NOPASSWD: /usr/bin/tee, /usr/bin/chmod, /usr/bin/chown, /bin/sed"
+SUDOERS_LINE="www-data ALL=(ALL) NOPASSWD: /usr/bin/tee, /usr/bin/chmod, /usr/bin/chown, /bin/sed, /bin/systemctl"
 if ! sudo grep -qF "$SUDOERS_LINE" /etc/sudoers; then
   echo "$SUDOERS_LINE" | sudo tee -a /etc/sudoers > /dev/null
 fi
