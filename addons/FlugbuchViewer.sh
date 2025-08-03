@@ -21,11 +21,11 @@ if [ "$IS_ZERO" = "1" ]; then
   exit 1
 fi
 
-# 1. Pakete für Kiosk-Modus und Splashscreen installieren
+# 1. Pakete für Kiosk-Modus installieren (ohne fbi, kein Splash)
 sudo apt update
 sudo apt install --no-install-recommends -y \
-  xserver-xorg x11-xserver-utils xinit openbox chromium-browser unclutter fbi \
-  lighttpd xdotool
+  xserver-xorg x11-xserver-utils xinit openbox chromium-browser unclutter \
+  lighttpd
 
 # 2. Autologin für flugbuch auf tty1 einrichten
 sudo mkdir -p /etc/systemd/system/getty@tty1.service.d
@@ -53,7 +53,7 @@ EOF
 sudo chmod +x "$WATCHDOG"
 sudo chown $USERNAME:$USERNAME "$WATCHDOG"
 
-# 4. .xinitrc nur noch Watchdog!
+# 4. .xinitrc für Watchdog anlegen (ohne Splash)
 XINITRC="$HOME/.xinitrc"
 sudo tee "$XINITRC" > /dev/null <<EOF
 #!/bin/bash
@@ -67,25 +67,17 @@ EOF
 sudo chmod +x "$XINITRC"
 sudo chown $USERNAME:$USERNAME "$XINITRC"
 
-
-# 5. .bash_profile für Autostart auf tty1 (mit Splash vor X!)
+# 5. .bash_profile für Autostart auf tty1 (NICHT bei SSH)
 BASH_PROFILE="$HOME/.bash_profile"
 sudo tee "$BASH_PROFILE" > /dev/null <<EOF
 # Starte nur auf tty1 (HDMI), nicht bei SSH
 if [ -z "\$SSH_CONNECTION" ] && [ "\$(tty)" = "/dev/tty1" ]; then
-  # Splash vor X zeigen!
-  if [ -f "/opt/boot/flugbuch.png" ]; then
-    sudo fbi -T 1 -a /opt/boot/flugbuch.png < /dev/tty1 > /dev/null 2>&1 &
-    sleep 4
-    sudo killall fbi
-  fi
   if ! pgrep -f kiosk_watchdog.sh >/dev/null; then
     startx
   fi
 fi
 EOF
 sudo chown $USERNAME:$USERNAME "$BASH_PROFILE"
-
 
 # 6. CGI-Skript für Web-URL-Änderung installieren
 CGI="/usr/lib/cgi-bin/set_kiosk_url.sh"
@@ -115,7 +107,7 @@ if grep -qi "Zero" /proc/device-tree/model 2>/dev/null; then
 fi
 
 CONFIG="/etc/kiosk_url.conf"
-URL_DEFAULT="http://localhost:1880/home"
+URL_DEFAULT="http://localhost:1880/viewerAT"
 
 # POST-Daten einlesen (bis Leerzeile)
 POSTDATA=""
@@ -140,33 +132,7 @@ EOF
 
 sudo chmod +x "$CGI"
 
-# 7. CGI-Skript für Browser-Steuerung (restart/reload)
-CGI_CTRL="/usr/lib/cgi-bin/kiosk_control.sh"
-sudo tee "$CGI_CTRL" > /dev/null <<'EOF'
-#!/bin/bash
-echo "Content-type: text/plain"
-echo ""
-
-ACTION="${QUERY_STRING#action=}"
-
-if [[ "$ACTION" == "restart" ]]; then
-    pkill -f chromium-browser
-    echo "Browser wird neugestartet!"
-elif [[ "$ACTION" == "reload" ]]; then
-    if ! command -v xdotool >/dev/null; then
-      apt install -y xdotool
-    fi
-    export DISPLAY=:0
-    xdotool search --onlyvisible --class chromium-browser windowactivate --sync key F5
-    echo "Seite wurde neu geladen (F5)!"
-else
-    echo "Keine oder unbekannte Aktion."
-fi
-EOF
-
-sudo chmod +x "$CGI_CTRL"
-
-# 8. CGI-Skript für Loganzeige
+# 7. CGI-Skript für Loganzeige
 CGI_LOG="/usr/lib/cgi-bin/kiosk_log.sh"
 sudo tee "$CGI_LOG" > /dev/null <<EOF
 #!/bin/bash
@@ -174,10 +140,9 @@ echo "Content-type: text/plain"
 echo ""
 tail -n 200 $LOGFILE 2>/dev/null || echo "Noch keine Logdatei gefunden."
 EOF
-
 sudo chmod +x "$CGI_LOG"
 
-# 9. HTML-Interface anlegen (mit Buttons und Log!)
+# 8. HTML-Interface anlegen (mit Log-Funktion!)
 HTML="/var/www/html/set_kiosk_url.html"
 sudo tee "$HTML" > /dev/null <<'EOF'
 <!DOCTYPE html>
@@ -199,7 +164,6 @@ sudo tee "$HTML" > /dev/null <<'EOF'
     button:hover { background:#388e3c; }
     pre { text-align:left; background:#e8f0fe; padding:10px; border-radius:8px; margin-top:15px; height:120px; overflow:auto; }
     .warn { color:#c00; font-weight:bold;}
-    .kiosk-controls button { margin:6px 10px 6px 0; }
     .logblock {margin-top:10px; background:#111; color:#fffd; padding:8px; font-size:12px; border-radius:8px; max-height:300px; overflow:auto;}
   </style>
 </head>
@@ -211,22 +175,14 @@ sudo tee "$HTML" > /dev/null <<'EOF'
     Bitte nutze einen Pi 3, 4 oder neuer.
   </div>
   <form id="kioskForm">
-    <label for="url">URL für den Kiosk-Browser (z.B. http://localhost:8080):</label><br>
+    <label for="url">URL für den Kiosk-Browser (z.B. http://localhost:1880/viewerAT):</label><br>
     <input type="text" id="url" name="url"
-      value="http://localhost:1880/home" /><br>
+      value="http://localhost:1880/viewerAT" /><br>
     <button type="submit">Kiosk-URL setzen</button>
   </form>
   <pre id="log">Status: Noch keine Aktion durchgeführt.</pre>
-
-  <div class="kiosk-controls">
-    <h2>Browser Kontrolle</h2>
-    <button onclick="kioskControl('restart');return false;">Browser neustarten</button>
-    <button onclick="kioskControl('reload');return false;">Seite neu laden</button>
-    <button onclick="kioskLog();return false;">Log anzeigen</button>
-    <pre id="kioskStatus"></pre>
-    <div id="kioskLog" class="logblock"></div>
-  </div>
-
+  <button onclick="kioskLog();return false;" style="margin-top:18px;">Log anzeigen</button>
+  <div id="kioskLog" class="logblock"></div>
   <a href="index.html">Zurück zur Startseite</a>
 </div>
 
@@ -257,13 +213,6 @@ document.getElementById('kioskForm').onsubmit = function(e) {
   xhr.send("url=" + encodeURIComponent(url));
 };
 
-function kioskControl(action) {
-  fetch('/cgi-bin/kiosk_control.sh?action=' + action)
-    .then(r => r.text())
-    .then(txt => document.getElementById('kioskStatus').textContent = txt)
-    .catch(e => document.getElementById('kioskStatus').textContent = 'Fehler: ' + e);
-}
-
 function kioskLog() {
   fetch('/cgi-bin/kiosk_log.sh')
     .then(r => r.text())
@@ -275,15 +224,15 @@ function kioskLog() {
 </html>
 EOF
 
-# 10. Sudoers-Konfiguration
-SUDOERS_LINE="www-data ALL=(ALL) NOPASSWD: /usr/bin/tee, /usr/bin/chmod, /usr/bin/chown, /bin/sed, /usr/bin/pkill, /usr/bin/xdotool, /usr/bin/tail"
+# 9. Sudoers-Konfiguration
+SUDOERS_LINE="www-data ALL=(ALL) NOPASSWD: /usr/bin/tee, /usr/bin/chmod, /usr/bin/chown, /bin/sed, /usr/bin/tail"
 if ! sudo grep -qF "$SUDOERS_LINE" /etc/sudoers; then
   echo "$SUDOERS_LINE" | sudo tee -a /etc/sudoers > /dev/null
 fi
 
-# 11. Button in index.html einfügen
+# 10. Button in index.html einfügen
 INDEX_HTML="/var/www/html/index.html"
-LINK='<button type="button" onclick="window.location.href='\''set_kiosk_url.html'\''">Kiosk-Modus aktivieren</button>'
+LINK='<button type="button" onclick="window.location.href='\''set_kiosk_url.html'\''">Kiosk-Modus</button>'
 if ! sudo grep -q "set_kiosk_url.html" "$INDEX_HTML"; then
   echo "Füge Kiosk-Modus-Button zur index.html hinzu..."
   sudo sed -i "/<div class=\"button-container\">/,/<\/div>/ {
@@ -292,8 +241,4 @@ if ! sudo grep -q "set_kiosk_url.html" "$INDEX_HTML"; then
 fi
 
 echo ""
-echo "Fertig! Kiosk-Setup mit Browser-Steuerung & Log wurde installiert."
-echo "Lege dein Splash-Logo als /opt/boot/flugbuch.png ab (PNG, 1080p empfohlen)."
-echo "Öffne im Browser: http://<IP>/set_kiosk_url.html"
-echo ""
-echo "Trage die gewünschte URL ein, verwende die Kontroll-Buttons – und check das Log!"
+echo "Fertig! Kiosk-Setup wurde installiert.Bitte das ganze System neustarten!"
