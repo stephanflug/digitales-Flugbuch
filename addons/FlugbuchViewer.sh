@@ -3,7 +3,6 @@ set -e
 
 USERNAME="flugbuch"
 HOME="/home/$USERNAME"
-LOGFILE="/var/log/kiosk_browser.log"
 
 # === 0. Prüfe, ob das ein Pi Zero oder Zero 2 ist ===
 IS_ZERO=0
@@ -21,10 +20,10 @@ if [ "$IS_ZERO" = "1" ]; then
   exit 1
 fi
 
-# 1. Pakete für Kiosk-Modus installieren (ohne fbi, kein Splash)
+# 1. Pakete für Kiosk-Modus und Splashscreen installieren
 sudo apt update
 sudo apt install --no-install-recommends -y \
-  xserver-xorg x11-xserver-utils xinit openbox chromium-browser unclutter \
+  xserver-xorg x11-xserver-utils xinit openbox chromium-browser unclutter fbi \
   lighttpd
 
 # 2. Autologin für flugbuch auf tty1 einrichten
@@ -35,28 +34,31 @@ ExecStart=
 ExecStart=-/sbin/agetty --autologin $USERNAME --noclear %I \$TERM
 EOF
 
-# 3. Watchdog-Skript für Chromium-Kiosk anlegen (mit Logging)
+# 3. Watchdog-Skript für Chromium-Kiosk anlegen
 WATCHDOG="$HOME/kiosk_watchdog.sh"
-sudo tee "$WATCHDOG" > /dev/null <<EOF
+sudo tee "$WATCHDOG" > /dev/null <<'EOF'
 #!/bin/bash
 export DISPLAY=:0
-URL="\$(cat /etc/kiosk_url.conf)"
-LOGFILE="$LOGFILE"
+URL="$(cat /etc/kiosk_url.conf)"
+
 while true; do
-  echo "[\$(date +'%Y-%m-%d %H:%M:%S')] Starte Chromium (\$URL)" >> "\$LOGFILE"
-  chromium-browser --noerrdialogs --disable-infobars --kiosk "\$URL" >> "\$LOGFILE" 2>&1
-  EXITCODE=\$?
-  echo "[\$(date +'%Y-%m-%d %H:%M:%S')] Chromium wurde beendet (Code \$EXITCODE)" >> "\$LOGFILE"
+  chromium-browser --noerrdialogs --disable-infobars --kiosk "$URL"
   sleep 5
 done
 EOF
 sudo chmod +x "$WATCHDOG"
 sudo chown $USERNAME:$USERNAME "$WATCHDOG"
 
-# 4. .xinitrc für Watchdog anlegen (ohne Splash)
+# 4. .xinitrc für Splash-Logo + Watchdog anlegen
 XINITRC="$HOME/.xinitrc"
 sudo tee "$XINITRC" > /dev/null <<EOF
 #!/bin/bash
+# Splash-Logo anzeigen (Logo als /opt/boot/flugbuch.png)
+if [ -f "/opt/boot/flugbuch.png" ]; then
+  fbi -T 1 -a /opt/boot/flugbuch.png &
+  sleep 4
+  killall fbi
+fi
 xset -dpms
 xset s off
 xset s noblank
@@ -107,7 +109,7 @@ if grep -qi "Zero" /proc/device-tree/model 2>/dev/null; then
 fi
 
 CONFIG="/etc/kiosk_url.conf"
-URL_DEFAULT="http://localhost:1880/viewerAT"
+URL_DEFAULT="http://localhost:1880/home"
 
 # POST-Daten einlesen (bis Leerzeile)
 POSTDATA=""
@@ -132,16 +134,7 @@ EOF
 
 sudo chmod +x "$CGI"
 
-# 7. CGI-Skript für Loganzeige
-CGI_LOG="/usr/lib/cgi-bin/kiosk_log.sh"
-sudo tee "$CGI_LOG" > /dev/null <<EOF
-#!/bin/bash
-echo "Content-type: text/plain"
-echo ""
-tail -n 200 $LOGFILE 2>/dev/null || echo "Noch keine Logdatei gefunden."
-EOF
-sudo chmod +x "$CGI_LOG"
-
+# 7. HTML-Interface anlegen
 # 8. HTML-Interface anlegen (mit Log-Funktion!)
 HTML="/var/www/html/set_kiosk_url.html"
 sudo tee "$HTML" > /dev/null <<'EOF'
@@ -325,16 +318,15 @@ function kioskLog() {
 </html>
 
 EOF
-
-# 9. Sudoers-Konfiguration
-SUDOERS_LINE="www-data ALL=(ALL) NOPASSWD: /usr/bin/tee, /usr/bin/chmod, /usr/bin/chown, /bin/sed, /usr/bin/tail"
+# 8. Sudoers-Konfiguration
+SUDOERS_LINE="www-data ALL=(ALL) NOPASSWD: /usr/bin/tee, /usr/bin/chmod, /usr/bin/chown, /bin/sed"
 if ! sudo grep -qF "$SUDOERS_LINE" /etc/sudoers; then
   echo "$SUDOERS_LINE" | sudo tee -a /etc/sudoers > /dev/null
 fi
 
-# 10. Button in index.html einfügen
+# 9. Button in index.html einfügen
 INDEX_HTML="/var/www/html/index.html"
-LINK='<button type="button" onclick="window.location.href='\''set_kiosk_url.html'\''">Kiosk-Modus</button>'
+LINK='<button type="button" onclick="window.location.href='\''set_kiosk_url.html'\''">Kiosk-Modus aktivieren</button>'
 if ! sudo grep -q "set_kiosk_url.html" "$INDEX_HTML"; then
   echo "Füge Kiosk-Modus-Button zur index.html hinzu..."
   sudo sed -i "/<div class=\"button-container\">/,/<\/div>/ {
@@ -343,4 +335,7 @@ if ! sudo grep -q "set_kiosk_url.html" "$INDEX_HTML"; then
 fi
 
 echo ""
-echo "Fertig! Kiosk-Setup wurde installiert.Bitte das ganze System neustarten!"
+echo "Fertig! Kiosk-Setup wurde installiert."
+echo "Öffne im Browser: http://<IP>/set_kiosk_url.html"
+
+
