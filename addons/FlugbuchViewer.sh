@@ -53,16 +53,10 @@ EOF
 sudo chmod +x "$WATCHDOG"
 sudo chown $USERNAME:$USERNAME "$WATCHDOG"
 
-# 4. .xinitrc für Splash-Logo + Watchdog anlegen
+# 4. .xinitrc nur noch Watchdog!
 XINITRC="$HOME/.xinitrc"
 sudo tee "$XINITRC" > /dev/null <<EOF
 #!/bin/bash
-# Splash-Logo anzeigen (Logo als /opt/boot/flugbuch.png)
-if [ -f "/opt/boot/flugbuch.png" ]; then
-  fbi -T 1 -a /opt/boot/flugbuch.png &
-  sleep 4
-  killall fbi
-fi
 xset -dpms
 xset s off
 xset s noblank
@@ -73,17 +67,25 @@ EOF
 sudo chmod +x "$XINITRC"
 sudo chown $USERNAME:$USERNAME "$XINITRC"
 
-# 5. .bash_profile für Autostart auf tty1 (NICHT bei SSH)
+
+# 5. .bash_profile für Autostart auf tty1 (mit Splash vor X!)
 BASH_PROFILE="$HOME/.bash_profile"
 sudo tee "$BASH_PROFILE" > /dev/null <<EOF
 # Starte nur auf tty1 (HDMI), nicht bei SSH
 if [ -z "\$SSH_CONNECTION" ] && [ "\$(tty)" = "/dev/tty1" ]; then
+  # Splash vor X zeigen!
+  if [ -f "/opt/boot/flugbuch.png" ]; then
+    sudo fbi -T 1 -a /opt/boot/flugbuch.png < /dev/tty1 > /dev/null 2>&1 &
+    sleep 4
+    sudo killall fbi
+  fi
   if ! pgrep -f kiosk_watchdog.sh >/dev/null; then
     startx
   fi
 fi
 EOF
 sudo chown $USERNAME:$USERNAME "$BASH_PROFILE"
+
 
 # 6. CGI-Skript für Web-URL-Änderung installieren
 CGI="/usr/lib/cgi-bin/set_kiosk_url.sh"
