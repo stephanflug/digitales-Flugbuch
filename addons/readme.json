@@ -35,7 +35,14 @@
       "beschreibung": "Deinstalliert den WireGuard Client vollständig, entfernt alle zugehörigen Dateien, Dienste und Berechtigungen und löscht sich anschließend selbst.",
       "version": "1.0",
       "autor": "Ebner Stephan"
+    },
+    {
+      "datei": "FlugbuchViewer.sh",
+      "beschreibung": "Nicht für den PI Zero 2.Erst ab dem Pi3 besser Pi 4 Aktuell in der Testphase",
+      "version": "1.0",
+      "autor": "Ebner Stephan"
     }
   ]
 }
+
 
