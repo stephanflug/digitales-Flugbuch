@@ -17,13 +17,16 @@ if [ "$IS_ZERO" = "1" ]; then
   exit 1
 fi
 
+USERNAME="flugbuch"
+HOME="/home/$USERNAME"
+
 # 1. CGI-Skript installieren
 CGI="/usr/lib/cgi-bin/set_kiosk_url.sh"
-sudo tee "$CGI" > /dev/null <<'EOF'
+sudo tee "$CGI" > /dev/null <<EOF
 #!/bin/bash
 
 LOGFILE="/var/log/set_kiosk_url.log"
-exec > >(tee -a "$LOGFILE")
+exec > >(tee -a "\$LOGFILE")
 exec 2>&1
 
 echo "Content-Type: text/event-stream"
@@ -50,28 +53,28 @@ URL_DEFAULT="http://localhost:8080"
 # POST-Daten einlesen (bis Leerzeile)
 POSTDATA=""
 while read LINE; do
-  [ "$LINE" == "" ] && break
+  [ "\$LINE" == "" ] && break
 done
 read POSTDATA
 
 parse_post() {
-  echo "$POSTDATA" | sed -n 's/^url=\(.*\)$/\1/p' | sed 's/%3A/:/g; s/%2F/\//g'
+  echo "\$POSTDATA" | sed -n 's/^url=\\(.*\\)\$/\\1/p' | sed 's/%3A/:/g; s/%2F/\\//g'
 }
-KIOSK_URL=$(parse_post)
-[ -z "$KIOSK_URL" ] && KIOSK_URL="$URL_DEFAULT"
+KIOSK_URL=\$(parse_post)
+[ -z "\$KIOSK_URL" ] && KIOSK_URL="\$URL_DEFAULT"
 
-echo "data: Setze Kiosk-URL: $KIOSK_URL"
+echo "data: Setze Kiosk-URL: \$KIOSK_URL"
 echo ""
-echo "$KIOSK_URL" | sudo tee "$CONFIG" > /dev/null
+echo "\$KIOSK_URL" | sudo tee "\$CONFIG" > /dev/null
 
 # Browser-Setup für den Kiosk-Modus einrichten:
-USERNAME="pi"
-HOME="/home/$USERNAME"
-XINITRC="$HOME/.xinitrc"
+USERNAME="$USERNAME"
+HOME="/home/\$USERNAME"
+XINITRC="\$HOME/.xinitrc"
 
-if [ ! -f "$XINITRC" ]; then
-  echo "data: Erstelle ~/.xinitrc für $USERNAME"
-  sudo tee "$XINITRC" > /dev/null <<EOT
+if [ ! -f "\$XINITRC" ]; then
+  echo "data: Erstelle ~/.xinitrc für \$USERNAME"
+  sudo tee "\$XINITRC" > /dev/null <<EOT
 #!/bin/bash
 xset -dpms
 xset s off
@@ -80,16 +83,16 @@ unclutter &
 openbox-session &
 chromium-browser --noerrdialogs --disable-infobars --kiosk "\$(cat /etc/kiosk_url.conf)"
 EOT
-  sudo chmod +x "$XINITRC"
-  sudo chown $USERNAME:$USERNAME "$XINITRC"
+  sudo chmod +x "\$XINITRC"
+  sudo chown \$USERNAME:\$USERNAME "\$XINITRC"
 fi
 
 # Füge rc.local-Autostart ein, falls nicht vorhanden:
 RCLOCAL="/etc/rc.local"
-if ! grep -q "startx" "$RCLOCAL"; then
+if ! grep -q "startx" "\$RCLOCAL"; then
   sudo sed -i '/^exit 0/i\
-sudo -u '"$USERNAME"' startx &\
-' "$RCLOCAL"
+sudo -u \$USERNAME startx &\
+' "\$RCLOCAL"
 fi
 
 echo "data: Kiosk-Modus aktiviert! Neustart nötig."
