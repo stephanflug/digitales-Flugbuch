@@ -1,7 +1,23 @@
 #!/bin/bash
 set -e
 
-# === 1. CGI-Skript installieren ===
+# === 0. Prüfe, ob das ein Pi Zero oder Zero 2 ist ===
+IS_ZERO=0
+if grep -qi "Zero" /proc/device-tree/model 2>/dev/null; then
+  IS_ZERO=1
+fi
+
+if [ "$IS_ZERO" = "1" ]; then
+  echo "-----------------------------------------------------------------"
+  echo "Achtung: Dieses Kiosk-Setup wird auf Raspberry Pi Zero/Zero 2 NICHT unterstützt!"
+  echo "Der Browser-Kiosk-Modus ist darauf extrem langsam oder läuft nicht."
+  echo "Bitte nutze mindestens ein Raspberry Pi 3, 4 oder höher."
+  echo "Setup wird abgebrochen."
+  echo "-----------------------------------------------------------------"
+  exit 1
+fi
+
+# 1. CGI-Skript installieren
 CGI="/usr/lib/cgi-bin/set_kiosk_url.sh"
 cat > "$CGI" <<'EOF'
 #!/bin/bash
@@ -11,6 +27,14 @@ echo "Connection: keep-alive"
 echo ""
 
 set -e
+
+# === Zero/Zero2-Erkennung ===
+if grep -qi "Zero" /proc/device-tree/model 2>/dev/null; then
+  echo "data: ❗️ Achtung: Pi Zero oder Zero 2 erkannt."
+  echo "data: Dieses Kiosk-Setup ist auf Pi Zero/Zero2 nicht unterstützt und wurde nicht installiert."
+  echo "data: Bitte verwende einen leistungsfähigeren Pi (z.B. 3, 4, 5)."
+  exit 0
+fi
 
 LOGFILE="/var/log/set_kiosk_url.log"
 exec > >(tee -a "$LOGFILE")
@@ -70,7 +94,7 @@ EOF
 
 chmod +x "$CGI"
 
-# === 2. HTML-Interface anlegen ===
+# 2. HTML-Interface anlegen
 HTML="/var/www/html/set_kiosk_url.html"
 cat > "$HTML" <<'EOF'
 <!DOCTYPE html>
@@ -91,11 +115,16 @@ cat > "$HTML" <<'EOF'
     button { background:#4CAF50; color:#fff; border:none; border-radius:8px; padding:10px 24px; cursor:pointer;}
     button:hover { background:#388e3c; }
     pre { text-align:left; background:#e8f0fe; padding:10px; border-radius:8px; margin-top:15px; height:120px; overflow:auto; }
+    .warn { color:#c00; font-weight:bold;}
   </style>
 </head>
 <body>
 <div class="container">
   <h1>Kiosk-Modus aktivieren</h1>
+  <div id="zeroWarn" class="warn" style="display:none;">
+    ❗️ <b>Dieses Setup funktioniert nicht auf Raspberry Pi Zero / Zero 2!</b><br>
+    Bitte nutze einen Pi 3, 4 oder neuer.
+  </div>
   <form id="kioskForm">
     <label for="url">URL für den Kiosk-Browser (z.B. http://localhost:8080):</label><br>
     <input type="text" id="url" name="url"
@@ -107,6 +136,14 @@ cat > "$HTML" <<'EOF'
 </div>
 
 <script>
+fetch('/proc/device-tree/model')
+  .then(r=>r.text())
+  .then(t=>{
+    if(t.match(/Zero/i)) {
+      document.getElementById('zeroWarn').style.display = '';
+      document.getElementById('kioskForm').style.display = 'none';
+    }
+  });
 document.getElementById('kioskForm').onsubmit = function(e) {
   e.preventDefault();
   let url = document.getElementById('url').value;
