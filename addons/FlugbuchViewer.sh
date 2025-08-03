@@ -1,8 +1,8 @@
 #!/bin/bash
 set -e
 
-# 1. CGI-Skript installieren
-CGI="/usr/lib/cgi-bin/fullpageos_build.sh"
+# === 1. CGI-Skript installieren ===
+CGI="/usr/lib/cgi-bin/set_kiosk_url.sh"
 cat > "$CGI" <<'EOF'
 #!/bin/bash
 echo "Content-Type: text/event-stream"
@@ -12,11 +12,12 @@ echo ""
 
 set -e
 
-LOGFILE="/var/log/fullpageos_build.log"
+LOGFILE="/var/log/set_kiosk_url.log"
 exec > >(tee -a "$LOGFILE")
 exec 2>&1
 
-URL_DEFAULT="https://downloads.raspberrypi.org/raspios_lite_armhf_latest"
+CONFIG="/etc/kiosk_url.conf"
+URL_DEFAULT="http://localhost:8080"
 
 # POST-Daten einlesen (bis Leerzeile)
 POSTDATA=""
@@ -28,56 +29,56 @@ read POSTDATA
 parse_post() {
   echo "$POSTDATA" | sed -n 's/^url=\(.*\)$/\1/p' | sed 's/%3A/:/g; s/%2F/\//g'
 }
-IMAGE_URL=$(parse_post)
-[ -z "$IMAGE_URL" ] && IMAGE_URL="$URL_DEFAULT"
+KIOSK_URL=$(parse_post)
+[ -z "$KIOSK_URL" ] && KIOSK_URL="$URL_DEFAULT"
 
-echo "data: Starte Build von FullPageOS mit URL: $IMAGE_URL"
+echo "data: Setze Kiosk-URL: $KIOSK_URL"
 echo ""
+echo "$KIOSK_URL" | sudo tee "$CONFIG" > /dev/null
 
-sudo apt update
-sudo apt install -y coreutils p7zip-full qemu-user-static git wget
+# Browser-Setup für den Kiosk-Modus einrichten:
+USERNAME="pi"
+HOME="/home/$USERNAME"
+XINITRC="$HOME/.xinitrc"
 
-WORKDIR="/opt/fullpageos_build"
-sudo mkdir -p "$WORKDIR"
-cd "$WORKDIR"
+if [ ! -f "$XINITRC" ]; then
+  echo "data: Erstelle ~/.xinitrc für $USERNAME"
+  sudo tee "$XINITRC" > /dev/null <<EOT
+#!/bin/bash
+xset -dpms
+xset s off
+xset s noblank
+unclutter &
+openbox-session &
+chromium-browser --noerrdialogs --disable-infobars --kiosk "\$(cat /etc/kiosk_url.conf)"
+EOT
+  sudo chmod +x "$XINITRC"
+  sudo chown $USERNAME:$USERNAME "$XINITRC"
+fi
 
-[ ! -d "CustomPiOS" ] && git clone https://github.com/guysoft/CustomPiOS.git
-[ ! -d "FullPageOS" ] && git clone https://github.com/guysoft/FullPageOS.git
+# Füge rc.local-Autostart ein, falls nicht vorhanden:
+RCLOCAL="/etc/rc.local"
+if ! grep -q "startx" "$RCLOCAL"; then
+  sudo sed -i '/^exit 0/i\
+sudo -u '"$USERNAME"' startx &\
+' "$RCLOCAL"
+fi
 
-cd FullPageOS/src/image
-
-echo "data: Lade OS-Image: $IMAGE_URL"
-echo ""
-wget -c --trust-server-names "$IMAGE_URL"
-
-cd ..
-
-../../CustomPiOS/src/update-custompios-paths
-
-sudo modprobe loop
-
-echo "data: Build startet – das dauert bis zu 1 Stunde auf dem Pi!"
-echo ""
-sudo bash -x ./build_dist
-
-echo ""
-echo "data: Build abgeschlossen! Das fertige Image findest du unter:"
-echo "data: $WORKDIR/FullPageOS/src/workspace/"
-echo "data: Fertig."
+echo "data: Kiosk-Modus aktiviert! Neustart nötig."
 echo ""
 EOF
 
 chmod +x "$CGI"
 
-# 2. HTML-Interface anlegen
-HTML="/var/www/html/fullpageos_build.html"
+# === 2. HTML-Interface anlegen ===
+HTML="/var/www/html/set_kiosk_url.html"
 cat > "$HTML" <<'EOF'
 <!DOCTYPE html>
 <html lang="de">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>FullPageOS Build-Addon</title>
+  <title>Kiosk-Modus Setup</title>
   <style>
     body { font-family: Arial,sans-serif; background:#f4f7fc; margin:0; padding:0; }
     .container {
@@ -89,31 +90,31 @@ cat > "$HTML" <<'EOF'
     input[type=text] { width:80%; padding:7px; border-radius:6px; border:1px solid #ccc; }
     button { background:#4CAF50; color:#fff; border:none; border-radius:8px; padding:10px 24px; cursor:pointer;}
     button:hover { background:#388e3c; }
-    pre { text-align:left; background:#e8f0fe; padding:10px; border-radius:8px; margin-top:15px; height:250px; overflow:auto; }
+    pre { text-align:left; background:#e8f0fe; padding:10px; border-radius:8px; margin-top:15px; height:120px; overflow:auto; }
   </style>
 </head>
 <body>
 <div class="container">
-  <h1>FullPageOS Image bauen</h1>
-  <form id="buildForm">
-    <label for="url">Download-URL für Raspberry Pi OS Lite:</label><br>
+  <h1>Kiosk-Modus aktivieren</h1>
+  <form id="kioskForm">
+    <label for="url">URL für den Kiosk-Browser (z.B. http://localhost:8080):</label><br>
     <input type="text" id="url" name="url"
-      value="https://downloads.raspberrypi.org/raspios_lite_armhf_latest" /><br>
-    <button type="submit">Build starten</button>
+      value="http://localhost:8080" /><br>
+    <button type="submit">Kiosk-URL setzen</button>
   </form>
-  <pre id="log">Status: Noch kein Build gestartet.</pre>
+  <pre id="log">Status: Noch keine Aktion durchgeführt.</pre>
   <a href="index.html">Zurück zur Startseite</a>
 </div>
 
 <script>
-document.getElementById('buildForm').onsubmit = function(e) {
+document.getElementById('kioskForm').onsubmit = function(e) {
   e.preventDefault();
   let url = document.getElementById('url').value;
   const log = document.getElementById('log');
-  log.textContent = 'Build wird gestartet...\n';
+  log.textContent = 'Kiosk-URL wird gesetzt...\n';
 
   const xhr = new XMLHttpRequest();
-  xhr.open("POST", "/cgi-bin/fullpageos_build.sh", true);
+  xhr.open("POST", "/cgi-bin/set_kiosk_url.sh", true);
   xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
   xhr.onreadystatechange = function() {
     if (xhr.readyState === 3 || xhr.readyState === 4) {
@@ -128,28 +129,28 @@ document.getElementById('buildForm').onsubmit = function(e) {
 </html>
 EOF
 
-# 3. Sudoers-Konfiguration (Sicherheitshinweis: für echtes Web sollte man feiner einstellen!)
-SUDOERS_LINE1="www-data ALL=(ALL) NOPASSWD: /sbin/modprobe"
-SUDOERS_LINE2="www-data ALL=(ALL) NOPASSWD: /usr/bin/apt, /usr/bin/apt-get, /usr/bin/git, /usr/bin/wget, /usr/bin/bash, /usr/bin/mkdir"
-SUDOERS_LINE3="www-data ALL=(ALL) NOPASSWD: /opt/fullpageos_build/FullPageOS/src/image/build_dist"
+# === 3. Sudoers-Konfiguration ===
+SUDOERS_LINE="www-data ALL=(ALL) NOPASSWD: /usr/bin/tee, /usr/bin/chmod, /usr/bin/chown, /bin/sed"
+if ! grep -qF "$SUDOERS_LINE" /etc/sudoers; then
+  echo "$SUDOERS_LINE" | sudo tee -a /etc/sudoers > /dev/null
+fi
 
-for LINE in "$SUDOERS_LINE1" "$SUDOERS_LINE2" "$SUDOERS_LINE3"; do
-  if ! grep -qF "$LINE" /etc/sudoers; then
-    echo "$LINE" | sudo tee -a /etc/sudoers > /dev/null
-  fi
-done
-
-# 4. Button in index.html einfügen
+# === 4. Button in index.html einfügen ===
 INDEX_HTML="/var/www/html/index.html"
-LINK='<button type="button" onclick="window.location.href='\''fullpageos_build.html'\''">FullPageOS bauen</button>'
-if ! grep -q "fullpageos_build.html" "$INDEX_HTML"; then
-  echo "Füge FullPageOS-Button zur index.html hinzu..."
+LINK='<button type="button" onclick="window.location.href='\''set_kiosk_url.html'\''">Kiosk-Modus aktivieren</button>'
+if ! grep -q "set_kiosk_url.html" "$INDEX_HTML"; then
+  echo "Füge Kiosk-Modus-Button zur index.html hinzu..."
   sed -i "/<div class=\"button-container\">/,/<\/div>/ {
     /<\/div>/ i \\        $LINK
   }" "$INDEX_HTML"
 fi
 
+# === 5. Pakete für Kiosk-Modus installieren ===
+sudo apt update
+sudo apt install --no-install-recommends -y xserver-xorg x11-xserver-utils xinit openbox chromium-browser unclutter
+
 echo ""
-echo "Fertig! FullPageOS-Build-Addon wurde installiert."
-echo "Öffne im Browser: http://<IP>/fullpageos_build.html"
+echo "Fertig! Kiosk-Setup wurde installiert."
+echo "Öffne im Browser: http://<IP>/set_kiosk_url.html"
 echo ""
+echo "Trage die gewünschte URL ein, dann nach dem nächsten Neustart startet dein Pi im Kiosk-Browser."
