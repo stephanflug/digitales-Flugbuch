@@ -20,10 +20,10 @@ if [ "$IS_ZERO" = "1" ]; then
   exit 1
 fi
 
-# 1. Pakete für Kiosk-Modus installieren
+# 1. Pakete für Kiosk-Modus und Splashscreen installieren
 sudo apt update
 sudo apt install --no-install-recommends -y \
-  xserver-xorg x11-xserver-utils xinit openbox chromium-browser unclutter \
+  xserver-xorg x11-xserver-utils xinit openbox chromium-browser unclutter fbi \
   lighttpd
 
 # 2. Autologin für flugbuch auf tty1 einrichten
@@ -34,20 +34,54 @@ ExecStart=
 ExecStart=-/sbin/agetty --autologin $USERNAME --noclear %I \$TERM
 EOF
 
-# 3. .bash_profile für Auto-Kiosk-Start (nur auf tty1, nicht SSH)
+# 3. Watchdog-Skript für Chromium-Kiosk anlegen
+WATCHDOG="$HOME/kiosk_watchdog.sh"
+sudo tee "$WATCHDOG" > /dev/null <<'EOF'
+#!/bin/bash
+export DISPLAY=:0
+URL="$(cat /etc/kiosk_url.conf)"
+
+while true; do
+  chromium-browser --noerrdialogs --disable-infobars --kiosk "$URL"
+  sleep 5
+done
+EOF
+sudo chmod +x "$WATCHDOG"
+sudo chown $USERNAME:$USERNAME "$WATCHDOG"
+
+# 4. .xinitrc für Splash-Logo + Watchdog anlegen
+XINITRC="$HOME/.xinitrc"
+sudo tee "$XINITRC" > /dev/null <<EOF
+#!/bin/bash
+# Splash-Logo anzeigen (Logo als /opt/boot/flugbuch.png)
+if [ -f "/opt/boot/flugbuch.png" ]; then
+  fbi -T 1 -a /opt/boot/flugbuch.png &
+  sleep 4
+  killall fbi
+fi
+xset -dpms
+xset s off
+xset s noblank
+unclutter &
+openbox-session &
+/home/$USERNAME/kiosk_watchdog.sh
+EOF
+sudo chmod +x "$XINITRC"
+sudo chown $USERNAME:$USERNAME "$XINITRC"
+
+# 5. .bash_profile für Autostart auf tty1 (NICHT bei SSH)
 BASH_PROFILE="$HOME/.bash_profile"
 sudo tee "$BASH_PROFILE" > /dev/null <<EOF
-# Starte Kiosk-Service nur am echten Terminal (HDMI), nicht bei SSH
+# Starte nur auf tty1 (HDMI), nicht bei SSH
 if [ -z "\$SSH_CONNECTION" ] && [ "\$(tty)" = "/dev/tty1" ]; then
-  # Starte Kiosk nur, wenn er nicht schon läuft
-  if ! systemctl is-active --quiet kiosk.service; then
-    sudo systemctl start kiosk.service
+  if ! pgrep -f kiosk_watchdog.sh >/dev/null; then
+    startx
   fi
 fi
 EOF
 sudo chown $USERNAME:$USERNAME "$BASH_PROFILE"
 
-# 4. CGI-Skript für Web-URL-Änderung installieren
+# 6. CGI-Skript für Web-URL-Änderung installieren
 CGI="/usr/lib/cgi-bin/set_kiosk_url.sh"
 sudo tee "$CGI" > /dev/null <<EOF
 #!/bin/bash
@@ -75,7 +109,7 @@ if grep -qi "Zero" /proc/device-tree/model 2>/dev/null; then
 fi
 
 CONFIG="/etc/kiosk_url.conf"
-URL_DEFAULT="http://localhost:8080"
+URL_DEFAULT="http://localhost:1880/home"
 
 # POST-Daten einlesen (bis Leerzeile)
 POSTDATA=""
@@ -94,55 +128,13 @@ echo "data: Setze Kiosk-URL: \$KIOSK_URL"
 echo ""
 echo "\$KIOSK_URL" | sudo tee "\$CONFIG" > /dev/null
 
-# Browser-Setup für den Kiosk-Modus einrichten:
-USERNAME="$USERNAME"
-HOME="/home/\$USERNAME"
-XINITRC="\$HOME/.xinitrc"
-
-if [ ! -f "\$XINITRC" ]; then
-  echo "data: Erstelle ~/.xinitrc für \$USERNAME"
-  sudo tee "\$XINITRC" > /dev/null <<EOT
-#!/bin/bash
-xset -dpms
-xset s off
-xset s noblank
-unclutter &
-openbox-session &
-chromium-browser --noerrdialogs --disable-infobars --kiosk "\$(cat /etc/kiosk_url.conf)"
-EOT
-  sudo chmod +x "\$XINITRC"
-  sudo chown \$USERNAME:\$USERNAME "\$XINITRC"
-fi
-
-# === systemd-Service für Kiosk-Modus ===
-SERVICE="/etc/systemd/system/kiosk.service"
-sudo tee "\$SERVICE" > /dev/null <<EOT2
-[Unit]
-Description=Kiosk Browser Autostart (via .xinitrc)
-After=network.target
-
-[Service]
-User=\$USERNAME
-Environment=DISPLAY=:0
-Type=simple
-ExecStart=/usr/bin/startx
-Restart=on-failure
-
-[Install]
-WantedBy=multi-user.target
-EOT2
-
-sudo systemctl daemon-reload
-sudo systemctl enable kiosk.service
-sudo systemctl restart kiosk.service
-
-echo "data: Kiosk-Modus aktiviert! Neustart nötig."
+echo "data: Kiosk-URL gesetzt. Nach dem nächsten Reboot startet Chromium mit dieser URL."
 echo ""
 EOF
 
 sudo chmod +x "$CGI"
 
-# 5. HTML-Interface anlegen
+# 7. HTML-Interface anlegen
 HTML="/var/www/html/set_kiosk_url.html"
 sudo tee "$HTML" > /dev/null <<'EOF'
 <!DOCTYPE html>
@@ -176,7 +168,7 @@ sudo tee "$HTML" > /dev/null <<'EOF'
   <form id="kioskForm">
     <label for="url">URL für den Kiosk-Browser (z.B. http://localhost:8080):</label><br>
     <input type="text" id="url" name="url"
-      value="http://localhost:8080" /><br>
+      value="http://localhost:1880/home" /><br>
     <button type="submit">Kiosk-URL setzen</button>
   </form>
   <pre id="log">Status: Noch keine Aktion durchgeführt.</pre>
@@ -214,13 +206,13 @@ document.getElementById('kioskForm').onsubmit = function(e) {
 </html>
 EOF
 
-# 6. Sudoers-Konfiguration
-SUDOERS_LINE="www-data ALL=(ALL) NOPASSWD: /usr/bin/tee, /usr/bin/chmod, /usr/bin/chown, /bin/sed, /bin/systemctl"
+# 8. Sudoers-Konfiguration
+SUDOERS_LINE="www-data ALL=(ALL) NOPASSWD: /usr/bin/tee, /usr/bin/chmod, /usr/bin/chown, /bin/sed"
 if ! sudo grep -qF "$SUDOERS_LINE" /etc/sudoers; then
   echo "$SUDOERS_LINE" | sudo tee -a /etc/sudoers > /dev/null
 fi
 
-# 7. Button in index.html einfügen
+# 9. Button in index.html einfügen
 INDEX_HTML="/var/www/html/index.html"
 LINK='<button type="button" onclick="window.location.href='\''set_kiosk_url.html'\''">Kiosk-Modus aktivieren</button>'
 if ! sudo grep -q "set_kiosk_url.html" "$INDEX_HTML"; then
@@ -231,7 +223,9 @@ if ! sudo grep -q "set_kiosk_url.html" "$INDEX_HTML"; then
 fi
 
 echo ""
-echo "Fertig! Kiosk-Setup wurde installiert."
+echo "Fertig! Kiosk-Setup (klassisch, ohne systemd-User-Service) wurde installiert."
+echo "Lege dein Splash-Logo als /opt/boot/flugbuch.png ab (PNG, 1080p empfohlen)."
 echo "Öffne im Browser: http://<IP>/set_kiosk_url.html"
 echo ""
-echo "Trage die gewünschte URL ein, dann nach dem nächsten Neustart startet dein Pi im Kiosk-Browser automatisch."
+echo "Trage die gewünschte URL ein, dann startet dein Pi nach dem nächsten Neustart automatisch im Kiosk-Browser!"
+
