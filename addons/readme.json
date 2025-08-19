@@ -41,9 +41,16 @@
       "beschreibung": "Richtet einen Kiosk-Modus für den Flugbuch-Viewer auf Raspberry Pi 3 oder neuer ein (nicht für Zero/Zero 2!). Automatischer Start des Browsers im Vollbild, Web-UI zur bequemen Änderung der Kiosk-URL, Watchdog für Neustart bei Fehlern. Der interne HDMI-Anschluss kann für einen externen Bildschirm genutzt werden, um die aktuell angemeldeten Piloten anzuzeigen.",
       "version": "1.0",
       "autor": "Ebner Stephan"
+    },
+    {
+      "datei": "safeBoot.sh",
+      "beschreibung": "Installiert ein Selbstheilungs-System für Raspberry Pi (alle Modelle, inkl. Zero 2 W): erkennt defekte Boots mit Dienst-Check (dbus/journald/NetworkManager), stellt automatisch gesicherte Standard-Konfigurationen wieder her und startet betroffene Dienste neu. Bei gesundem Boot werden laufende/aktivierte Dienste erkannt und ihre wichtigsten Configs sowie Unit-Overrides versioniert gesichert. Inklusive zRAM-Swap (dphys-swapfile aus), geplantem fsck für die SD-Root-Partition, eigenem Log mit Logrotation (/var/log/safe-boot.log) und Safe-Mode-Flag auf /boot. Zusätzlicher Speicherplatz mit 500MB"
+      "version": "1.0",
+      "autor": "Ebner Stephan"
     }
   ]
 }
+
 
 
 
