@@ -120,7 +120,14 @@ done
 if [ $FAILED -eq 0 ]; then
   # ---------------- GESUND: BACKUP & MANIFEST ---------------------------------
   log "System gesund → erstelle vollständiges Backup & Manifest."
-  : >"$MANIFEST"
+
+   # Backup-Verzeichnis komplett neu aufsetzen
+   rm -rf "$BACKUP_DIR"
+   mkdir -p "$SERV_DIR" "$BACKUP_DIR/etc"
+
+   # Manifest neu schreiben
+   : >"$MANIFEST"
+
   echo "timestamp=$(date -Iseconds)"        >>"$MANIFEST"
   echo "kernel=$(uname -r)"                 >>"$MANIFEST"
   echo "rootdev=$(findmnt -no SOURCE /)"    >>"$MANIFEST"
