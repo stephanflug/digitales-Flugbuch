@@ -109,15 +109,21 @@ restart_from_manifest() {
   done
 }
 
-# ---- Gesundheitscheck Basisdienste -------------------------------------------
-FAILED=0
-for svc in dbus systemd-journald NetworkManager dhcpcd; do
-  if systemctl list-unit-files | grep -q "^$svc\.service"; then
-    systemctl -q is-active "$svc" || FAILED=1
-  fi
+# ---- Gesundheitscheck mit Retry (3 Versuche, 3 Sekunden Abstand) ------------
+check_ok=0
+for attempt in 1 2 3; do
+  FAILED=0
+  for svc in dbus systemd-journald NetworkManager dhcpcd; do
+    if systemctl list-unit-files --type=service --no-pager --plain | grep -q "^$svc\.service"; then
+      systemctl -q is-active "$svc" || FAILED=1
+    fi
+  done
+  [ $FAILED -eq 0 ] && { check_ok=1; break; }
+  sleep 3
 done
 
-if [ $FAILED -eq 0 ]; then
+if [ $check_ok -eq 1 ]; then
+
   # ---------------- GESUND: BACKUP & MANIFEST ---------------------------------
   log "System gesund → erstelle vollständiges Backup & Manifest."
 
@@ -201,9 +207,8 @@ say "Erstelle systemd Service-Datei..."
 cat >/etc/systemd/system/safe-boot.service <<'EOF'
 [Unit]
 Description=Safe Boot Self-Healing (Backup/Restore)
-DefaultDependencies=no
-After=local-fs.target
-Before=multi-user.target
+After=network-online.target
+Wants=network-online.target
 
 [Service]
 Type=oneshot
@@ -211,6 +216,7 @@ ExecStart=/bin/bash /usr/local/sbin/safe-boot.sh
 
 [Install]
 WantedBy=multi-user.target
+
 EOF
 
 # --- 3) Logrotate für /var/log/safe-boot.log ---------------------------------
