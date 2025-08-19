@@ -15,8 +15,9 @@ say "Starte Installation des Safe-Boot-Selbstheilungssystems..."
 # --- 1) Hauptskript schreiben -------------------------------------------------
 say "Erstelle /usr/local/sbin/safe-boot.sh..."
 cat >/usr/local/sbin/safe-boot.sh <<'EOF'
+
 #!/bin/bash
-# Safe Boot Self-Healing Script (mit Dienst-Erkennung, Backup & Restore)
+# Safe Boot Self-Healing Script (v2) – schreibt IMMER ein vollständiges Manifest
 
 set -euo pipefail
 
@@ -26,7 +27,7 @@ MANIFEST="$BACKUP_DIR/manifest.txt"
 FLAG_FILE="/boot/SAFE_MODE.flag"
 LOG_FILE="/var/log/safe-boot.log"
 
-mkdir -p "$SERV_DIR"
+mkdir -p "$SERV_DIR" "$BACKUP_DIR/etc"
 touch "$LOG_FILE" "$MANIFEST"
 
 log() {
@@ -34,32 +35,17 @@ log() {
   echo "$MSG" | tee -a "$LOG_FILE"
 }
 
-# --- Hilfsfunktionen ----------------------------------------------------------
-
-# robustes Kopieren (Datei oder Verzeichnis, wenn vorhanden)
-cp_safe() {
-  local src="$1" dst="$2"
-  if [ -e "$src" ]; then
-    mkdir -p "$(dirname "$dst")"
-    # -a bewahrt Rechte/Owner/Symlinks; --parents hält Pfadstruktur falls gewünscht
-    cp -a "$src" "$dst"
-    return 0
-  fi
-  return 1
-}
-
-# Liste laufender + aktivierter Services (ohne Sockets/Timer), Namen ohne .service
+# ---- Dienstlisten -------------------------------------------------------------
 running_services() {
-  systemctl list-units --type=service --state=running --no-legend \
+  systemctl list-units --type=service --state=running --no-legend 2>/dev/null \
     | awk '{print $1}' | sed 's/\.service$//' | sort -u
 }
 enabled_services() {
-  systemctl list-unit-files --type=service --state=enabled --no-legend \
+  systemctl list-unit-files --type=service --state=enabled --no-legend 2>/dev/null \
     | awk '{print $1}' | sed 's/\.service$//' | sort -u
 }
 
-# Zu sichernde Pfade je Service (whitelist – gängige Dienste)
-# -> Ausgabe: newline-separierte Pfade
+# ---- Whitelist für Konfigpfade je Dienst -------------------------------------
 service_paths() {
   local s="$1"
   case "$s" in
@@ -72,81 +58,84 @@ service_paths() {
     lighttpd)                        echo -e "/etc/lighttpd";;
     nginx)                           echo -e "/etc/nginx";;
     docker|containerd)               echo -e "/etc/docker\n/etc/containerd";;
-    cron|crond|cron.service)         echo -e "/etc/cron*";;
-    timesyncd|systemd-timesyncd)     echo -e "/etc/systemd/timesyncd.conf";;
-    systemd-logind)                  echo -e "/etc/systemd/logind.conf";;
+    cron|crond)                      echo -e "/etc/cron.d\n/etc/crontab";;
+    systemd-timesyncd|timesyncd)     echo -e "/etc/systemd/timesyncd.conf";;
+    systemd-logind|logind)           echo -e "/etc/systemd/logind.conf";;
     rsyslog)                         echo -e "/etc/rsyslog.conf\n/etc/rsyslog.d";;
     *)                               : ;;
   esac
 }
 
-# Kernsystem-Dateien immer sichern
-backup_core() {
-  cp_safe /etc/fstab                     "$BACKUP_DIR/etc/fstab"
-  cp_safe /etc/default/zramswap          "$BACKUP_DIR/etc/default/zramswap"
-  cp_safe /etc/systemd/journald.conf     "$BACKUP_DIR/etc/systemd/journald.conf"
-  cp_safe /etc/network/interfaces        "$BACKUP_DIR/etc/network/interfaces"
-  cp_safe /etc/hostname                  "$BACKUP_DIR/etc/hostname"
-  cp_safe /etc/hosts                     "$BACKUP_DIR/etc/hosts"
+cp_safe() { # kopiert Datei/Verzeichnis, falls vorhanden
+  local src="$1" dst="$2"
+  if [ -e "$src" ]; then
+    mkdir -p "$(dirname "$dst")"
+    cp -a "$src" "$dst"
+    return 0
+  fi
+  return 1
 }
 
-# Alle relevanten Unit-Dateien sichern
-backup_unit_files() {
-  local svc="$1"
-  local unit="$svc.service"
+backup_core() {
+  local core_paths=(
+    "/etc/fstab"
+    "/etc/default/zramswap"
+    "/etc/systemd/journald.conf"
+    "/etc/network/interfaces"
+    "/etc/hostname"
+    "/etc/hosts"
+  )
+  for p in "${core_paths[@]}"; do
+    if cp_safe "$p" "$BACKUP_DIR/etc$(echo "$p" | sed 's#^/etc##')"; then
+      echo "backup=core|$p" >>"$MANIFEST"
+    fi
+  done
+}
 
-  # tatsächliche Unit-Orte (vendor & override)
+backup_unit_files() {
+  local svc="$1" unit="$svc.service"
+  mkdir -p "$SERV_DIR/$svc"
   for d in /etc/systemd/system /lib/systemd/system /usr/lib/systemd/system; do
     [ -f "$d/$unit" ] && cp_safe "$d/$unit" "$SERV_DIR/$svc/unit$(echo "$d" | sed 's#/#_#g').service"
-    # Drop-in-Overrides
     [ -d "$d/$unit.d" ] && cp_safe "$d/$unit.d" "$SERV_DIR/$svc/$(echo "$d" | sed 's#/#_#g').d"
   done
-
-  # Wants/Requires-Symlinks (nur Listing ins Manifest)
-  systemctl list-dependencies "$unit" --plain --no-pager || true
 }
 
-# Dienste aus Manifest neu starten
 restart_from_manifest() {
-  local list
-  list=$(awk -F= '/^service=/{print $2}' "$MANIFEST" | sort -u)
+  local list; list=$(awk -F= '/^service=/{print $2}' "$MANIFEST" | sort -u)
   systemctl daemon-reload
   for s in $list; do
     systemctl restart "$s.service" 2>/dev/null || true
   done
 }
 
-# --- Gesundheitscheck (kritische Basisdienste) --------------------------------
+# ---- Gesundheitscheck Basisdienste -------------------------------------------
 FAILED=0
-for svc in dbus systemd-journald NetworkManager; do
-  if ! systemctl -q is-active "$svc"; then
-    FAILED=1
+for svc in dbus systemd-journald NetworkManager dhcpcd; do
+  if systemctl list-unit-files | grep -q "^$svc\.service"; then
+    systemctl -q is-active "$svc" || FAILED=1
   fi
 done
 
 if [ $FAILED -eq 0 ]; then
-  # ------------------- GESUND: BACKUP AKTUALISIEREN ---------------------------
-  log "System gesund → sichere Konfiguration & aktive Dienste."
-
-  # Manifest neu beginnen
+  # ---------------- GESUND: BACKUP & MANIFEST ---------------------------------
+  log "System gesund → erstelle vollständiges Backup & Manifest."
   : >"$MANIFEST"
   echo "timestamp=$(date -Iseconds)"        >>"$MANIFEST"
   echo "kernel=$(uname -r)"                 >>"$MANIFEST"
   echo "rootdev=$(findmnt -no SOURCE /)"    >>"$MANIFEST"
 
+  # Core-Dateien sichern + IMMER ins Manifest schreiben (falls vorhanden)
   backup_core
 
-  # Liste aktiver Dienste sammeln (Union aus laufend + aktiviert)
-  mapfile -t RUN < <(running_services)
-  mapfile -t ENA < <(enabled_services)
-  # Merge: RUN und ENA zusammenführen
-  SVCS=$(printf "%s\n%s\n" "${RUN[@]}" "${ENA[@]}" | sed '/^$/d' | sort -u)
+  # Dienste sammeln (laufend ∪ aktiviert)
+  mapfile -t RUN < <(running_services || true)
+  mapfile -t ENA < <(enabled_services || true)
+  SVCS=$(printf "%s\n%s\n" "${RUN[@]:-}" "${ENA[@]:-}" | sed '/^$/d' | sort -u)
 
   for s in $SVCS; do
-    mkdir -p "$SERV_DIR/$s"
-    echo "service=$s" >>"$MANIFEST"
-
-    # Konfigpfade sichern
+    echo "service=$s" >>"$MANIFEST"   # IMMER ins Manifest
+    # bekannte Konfigurationen sichern
     mapfile -t PATHS < <(service_paths "$s" || true)
     for p in "${PATHS[@]:-}"; do
       [ -z "$p" ] && continue
@@ -156,8 +145,6 @@ if [ $FAILED -eq 0 ]; then
         fi
       done
     done
-
-    # Unit-Dateien + Overrides sichern
     backup_unit_files "$s" >/dev/null 2>&1 || true
   done
 
@@ -165,40 +152,38 @@ if [ $FAILED -eq 0 ]; then
   log "Backup abgeschlossen. Manifest: $MANIFEST"
 
 else
-  # ------------------- DEFEKT: RESTORE DURCHFÜHREN ----------------------------
-  log "System defekt erkannt → stelle Konfiguration aus Backup wieder her."
-
-  # Kernsystem wiederherstellen (wenn vorhanden)
-  for pair in \
-    "$BACKUP_DIR/etc/fstab:/etc/fstab" \
-    "$BACKUP_DIR/etc/default/zramswap:/etc/default/zramswap" \
-    "$BACKUP_DIR/etc/systemd/journald.conf:/etc/systemd/journald.conf" \
-    "$BACKUP_DIR/etc/network/interfaces:/etc/network/interfaces" \
-    "$BACKUP_DIR/etc/hostname:/etc/hostname" \
-    "$BACKUP_DIR/etc/hosts:/etc/hosts"; do
-      src="\${pair%%:*}"; dst="\${pair##*:}"
-      [ -e "$src" ] && cp -a "$src" "$dst"
-  done
-
-  # Service-Konfigurationen aus Manifest zurückspielen
+  # ---------------- DEFEKT: RESTORE -------------------------------------------
+  log "System defekt erkannt → Wiederherstellung aus Backup."
+  # Core wiederherstellen
   while IFS= read -r line; do
     case "$line" in
-      backup=*)
-        entry="\${line#backup=}"              # svc|/etc/pfad
-        svc="\${entry%%|*}"
-        path="\${entry#*|}"
-        src="$SERV_DIR/\$svc/config$(echo "$path" | sed 's#/#_#g')"
-        [ -e "\$src" ] && cp -a "\$src" "\$path" || true
-      ;;
+      backup=core\|*)
+        path="${line#backup=core|}"
+        src="$BACKUP_DIR/etc$(echo "$path" | sed 's#^/etc##')"
+        [ -e "$src" ] && cp -a "$src" "$path" || true
+        ;;
     esac
   done < "$MANIFEST"
 
-  # Units neu laden & betroffene Services neu starten
-  restart_from_manifest
+  # Service-Konfigs wiederherstellen
+  while IFS= read -r line; do
+    case "$line" in
+      backup=*)
+        entry="${line#backup=}"          # svc|/etc/pfad
+        svc="${entry%%|*}"
+        path="${entry#*|}"
+        [ "$svc" = "core" ] && continue
+        src="$SERV_DIR/$svc/config$(echo "$path" | sed 's#/#_#g')"
+        [ -e "$src" ] && cp -a "$src" "$path" || true
+        ;;
+    esac
+  done < "$MANIFEST"
 
+  restart_from_manifest
   echo "SAFE MODE AKTIV am $(date)" | tee -a "$LOG_FILE" > "$FLAG_FILE"
-  log "Wiederherstellung abgeschlossen. Details: $LOG_FILE  | Flag: $FLAG_FILE"
+  log "Wiederherstellung abgeschlossen. Details: $LOG_FILE | Flag: $FLAG_FILE"
 fi
+
 EOF
 
 chmod 0755 /usr/local/sbin/safe-boot.sh
