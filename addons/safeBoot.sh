@@ -200,7 +200,7 @@ Before=multi-user.target
 
 [Service]
 Type=oneshot
-ExecStart=/usr/local/sbin/safe-boot.sh
+ExecStart=/bin/bash /usr/local/sbin/safe-boot.sh
 
 [Install]
 WantedBy=multi-user.target
