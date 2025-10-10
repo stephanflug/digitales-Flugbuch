@@ -210,7 +210,7 @@ Startseite url:http://<IPAdresse>:1880/home
 
 11 Schaltplan Prinzipschema:   <a href="https://github.com/stephanflug/digitales-Flugbuch/blob/main/Schaltplan/BelegungsaufstellungV1.0.pdf" target="_blank">Belegungsaufstellung</a>
 
-11a Version 1 mit RFID RC522 
+11a Version 1 mit RFID RC522 (alte Version. Empfehlung:Bei Neuinstallation Version 2 zu verwenden)
 <img src="https://github.com/stephanflug/digitales-Flugbuch/blob/main/Schaltplan/Hardware_SteckplatineV1.png" alt="Logo" width="800" height="500"/>
 
 11b Version 1B mit RFID RC522 + RTC
