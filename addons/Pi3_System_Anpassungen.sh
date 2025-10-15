@@ -78,8 +78,4 @@ echo "data: Fertig! WLAN wird jetzt bevorzugt, LAN dient als Fallback."
 echo "data: Prüfe mit: ip route get 8.8.8.8"
 echo ""
 
-# Erfolgreich abgeschlossen → Script löschen
-echo "data: Ausführung erfolgreich – Script wird nun entfernt..."
-rm -f "$SCRIPT_PATH"
-
 exit 0
