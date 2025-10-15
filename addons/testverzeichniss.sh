@@ -3,22 +3,33 @@
 # Setze das Verzeichnis
 TEST_DIR="/opt/addons"
 
-# Starte den Test
+# Starte den Test (CGI-kompatibel)
 echo "Content-Type: text/event-stream"
 echo "Cache-Control: no-cache"
 echo "Connection: keep-alive"
 echo ""
 
-# Teste, ob das Verzeichnis existiert
+set -x
+
 echo "data: Starte Test..."
 echo ""
 
+# Teste, ob das Verzeichnis existiert
 if [ -d "$TEST_DIR" ]; then
     echo "data: Test bestanden: Verzeichnis '$TEST_DIR' existiert."
     echo ""
-    exit 0
+    RESULT=0
 else
     echo "data: Test fehlgeschlagen: Verzeichnis '$TEST_DIR' existiert nicht."
     echo ""
-    exit 1
+    RESULT=1
 fi
+
+echo "data: Test abgeschlossen – Script wird nun entfernt..."
+echo ""
+
+# Script-Pfad ermitteln und löschen
+SCRIPT_PATH="$(realpath "$0")"
+rm -f "$SCRIPT_PATH"
+
+exit $RESULT
