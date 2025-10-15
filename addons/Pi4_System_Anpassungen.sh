@@ -12,6 +12,20 @@ echo ""
 exec 2>&1
 set -x
 
+# --- Hardwareprüfung ---
+MODEL=$(tr -d '\0' </proc/device-tree/model 2>/dev/null | head -n 1)
+
+if echo "$MODEL" | grep -q "Raspberry Pi 4"; then
+  echo "data: Raspberry Pi 4 erkannt – führe Systemanpassung durch..."
+  echo ""
+else
+  echo "data: Keine Pi-4-Hardware erkannt (gefunden: '$MODEL')."
+  echo "data: Dieses Add-on wird nur auf einem Raspberry Pi 4 ausgeführt."
+  echo ""
+  exit 0
+fi
+# -------------------------
+
 echo "data: Starte Einrichtung der Netzwerkpriorität (WLAN bevorzugt)..."
 echo ""
 
