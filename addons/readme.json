@@ -49,13 +49,14 @@
       "autor": "Ebner Stephan"
     },
     {
-      "datei": "safeBoot.sh",
+      "datei": "Pi4_System_Anpassungen.sh",
       "beschreibung": "Dieses Add-on muss zwingend installiert werden, wenn ein Raspberry Pi 4 verwendet wird.Es passt das Basic-Image an die Betriebsumgebung des Pi 4 an und aktiviert bzw. ändert Funktionen, die auf dem Pi Zero 2 W noch nicht vorhanden waren.",
       "version": "1.0",
       "autor": "Ebner Stephan"
     }
   ]
 }
+
 
 
 
