@@ -47,6 +47,8 @@ Ab Version 3.5 kann die Altitude-Sensor-Funktion direkt mit dem Flugbuch verwend
 
 > **Hinweis:** Mit WireGuard VPN wird der Zugriff auf das Flugbuch so sicher und komfortabel wie ein lokaler Zugriff im Verein.
 
+### 🧪 Aktuelle getestete Geräte
+
 - ✅ **Pi Zero W2** – getestet  
 - ✅ **Pi 3B** – getestet  
 - 🔄 **Pi 4** – Testphase  
