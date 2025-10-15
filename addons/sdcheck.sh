@@ -11,6 +11,7 @@ set -x
 echo "data: Starte SD-Karten-Fehlerprüfung..."
 echo ""
 
+# SD-Log auslesen
 if command -v journalctl >/dev/null 2>&1; then
     LOG=$(journalctl -k | grep -iE 'mmc|mmcblk')
 else
@@ -19,6 +20,7 @@ fi
 
 FEHLER=$(echo "$LOG" | grep -iE 'error|fail|io error')
 
+# Ausgabe
 if [ -n "$FEHLER" ]; then
     echo "data: Fehler gefunden:"
     echo ""
@@ -30,3 +32,11 @@ else
 fi
 
 echo ""
+echo "data: Überprüfung abgeschlossen – Script wird nun entfernt..."
+echo ""
+
+# Script-Pfad ermitteln und löschen
+SCRIPT_PATH="$(realpath "$0")"
+rm -f "$SCRIPT_PATH"
+
+exit 0
