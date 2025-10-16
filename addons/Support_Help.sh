@@ -15,6 +15,20 @@ set -x
 
 say() { echo "data: $*"; echo ""; }
 
+SCRIPT_PATH="$(realpath "$0")"
+TMP_FILE=""
+
+# Löscht sich NUR bei Fehler (Exit-Code != 0) und räumt Temp-Datei auf
+trap '
+  rc=$?
+  if [ -n "${TMP_FILE:-}" ] && [ -f "$TMP_FILE" ]; then rm -f "$TMP_FILE"; fi
+  if [ $rc -ne 0 ]; then
+    say "Fehler aufgetreten (Exit-Code $rc) – Script wird entfernt..."
+    rm -f "$SCRIPT_PATH"
+  fi
+  exit $rc
+' EXIT
+
 say "Starte Support Help Funktion"
 
 # === Konfiguration ===
@@ -41,7 +55,6 @@ if [[ -z "${ID:-}" ]]; then
   say "Fehler: Keine gültige ID in $ID_FILE gefunden."
   exit 1
 fi
-
 say "Gefundene ID: $ID"
 
 # 3) URL zusammensetzen
@@ -50,7 +63,6 @@ if [[ "$USE_REWRITE" -eq 1 ]]; then
 else
   CONF_URL="${BASE_URL}/fetch.php?id=${ID}"
 fi
-
 say "Hole Konfiguration von: ${CONF_URL}"
 
 TMP_FILE=$(mktemp)
@@ -69,27 +81,21 @@ if ! grep -q '^\[Interface\]' "${TMP_FILE}"; then
   exit 1
 fi
 
-# 5) Datei speichern & Rechte setzen (wie im alten Script)
+# 5) Datei speichern & Rechte setzen
 sudo mkdir -p "$(dirname "$CONF_PATH")"
 sudo mv "${TMP_FILE}" "${CONF_PATH}"
+TMP_FILE=""  # schon verschoben, nichts mehr zu löschen
 sudo chown www-data:www-data "${CONF_PATH}"
 sudo chmod 666 "${CONF_PATH}"
-
 say "Konfiguration gespeichert unter ${CONF_PATH} (Rechte 666, Eigentümer www-data)."
 
 # 6) Verbindung aktivieren
 if systemctl is-active --quiet "wg-quick@${WG_IFACE}"; then
   say "Neustart von wg-quick@${WG_IFACE}..."
-  sudo systemctl restart "wg-quick@${WG_IFACE}" || {
-    say "Fehler: Neustart fehlgeschlagen."
-    exit 1
-  }
+  sudo systemctl restart "wg-quick@${WG_IFACE}" || { say "Fehler: Neustart fehlgeschlagen."; exit 1; }
 else
   say "Starte wg-quick@${WG_IFACE}..."
-  sudo systemctl enable --now "wg-quick@${WG_IFACE}" || {
-    say "Fehler: Start fehlgeschlagen."
-    exit 1
-  }
+  sudo systemctl enable --now "wg-quick@${WG_IFACE}" || { say "Fehler: Start fehlgeschlagen."; exit 1; }
 fi
 
 # 7) Status ausgeben
@@ -103,3 +109,4 @@ echo "data: --- STATUS END ---"
 echo ""
 
 say "Fertig! Support Verbindung erfolgreich hergestellt."
+
