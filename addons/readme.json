@@ -59,9 +59,16 @@
       "beschreibung": "Dieses Add-on muss zwingend installiert werden, wenn ein Raspberry Pi 3 verwendet wird.Es passt das Basic-Image an die Betriebsumgebung des Pi 3 an und aktiviert bzw. ändert Funktionen, die auf dem Pi Zero 2 W noch nicht vorhanden waren.",
       "version": "1.0",
       "autor": "Ebner Stephan"
+    },
+    {
+      "datei": "Support_Help.sh",
+      "beschreibung": "Mit dem Add-on kann der Support den Anwender bei Problemen oder anderen Anliegen aus der Ferne unterstützen.Dazu muss zuvor lediglich die eindeutige ID des installierten Systems an den Support übermittelt werden.Nach erfolgreicher Bestätigung kann das Add-on anschließend installiert werden.",
+      "version": "1.0",
+      "autor": "Ebner Stephan"
     }
   ]
 }
+
 
 
 
