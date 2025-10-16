@@ -34,9 +34,9 @@ say "Starte Support Help Funktion"
 # === Konfiguration ===
 ID_FILE="/opt/digitalflugbuch/data/DatenBuch/IDnummer.txt"
 CONF_PATH="/opt/digitalflugbuch/data/DatenBuch/wg0.conf"
-WG_IFACE="wg0"
+WG_IFACE="wg0"   # muss dem Interface-Namen in der wg0.conf entsprechen
 BASE_URL="https://flugbuch.gltdienst.home64.de/Support"
-USE_REWRITE=0   # 0 = fetch.php?id=<ID>, 1 = /Support/<ID>/wg0.conf
+USE_REWRITE=0    # 0 = fetch.php?id=<ID>, 1 = /Support/<ID>/wg0.conf
 # ======================
 
 # 1) WireGuard und curl sicherstellen
@@ -50,7 +50,7 @@ if [[ ! -f "$ID_FILE" ]]; then
   exit 1
 fi
 
-ID=$(grep -E '^ID:' "$ID_FILE" | awk -F': ' '{print $2}' | tr -d '\r' | xargs)
+ID=$(grep -E '^ID:' "$ID_FILE" | awk -F': ' '{print $2}' | tr -d "\r" | xargs)
 if [[ -z "${ID:-}" ]]; then
   say "Fehler: Keine gültige ID in $ID_FILE gefunden."
   exit 1
@@ -81,26 +81,41 @@ if ! grep -q '^\[Interface\]' "${TMP_FILE}"; then
   exit 1
 fi
 
-# 5) Datei speichern & Rechte setzen
+# 5) Datei speichern & Rechte setzen (wie bei dir: 666 für Web-Addon)
 sudo mkdir -p "$(dirname "$CONF_PATH")"
 sudo mv "${TMP_FILE}" "${CONF_PATH}"
-TMP_FILE=""  # schon verschoben, nichts mehr zu löschen
+TMP_FILE=""
 sudo chown www-data:www-data "${CONF_PATH}"
 sudo chmod 666 "${CONF_PATH}"
 say "Konfiguration gespeichert unter ${CONF_PATH} (Rechte 666, Eigentümer www-data)."
 
-# 6) Verbindung aktivieren
-if systemctl is-active --quiet "wg-quick@${WG_IFACE}"; then
-  say "Neustart von wg-quick@${WG_IFACE}..."
-  sudo systemctl restart "wg-quick@${WG_IFACE}" || { say "Fehler: Neustart fehlgeschlagen."; exit 1; }
-else
-  say "Starte wg-quick@${WG_IFACE}..."
-  sudo systemctl enable --now "wg-quick@${WG_IFACE}" || { say "Fehler: Start fehlgeschlagen."; exit 1; }
+# 6) Verbindung aktivieren (OHNE systemd-Unit, direkt mit deiner Datei)
+say "Starte WireGuard über ${CONF_PATH} (ohne Kopie/Unit)..."
+
+# wg-quick verlangt restriktive Rechte -> temporär 600 setzen
+sudo chmod 600 "${CONF_PATH}"
+
+# Falls Interface bereits läuft: erst sauber runterfahren (mit exakt derselben Datei)
+if sudo wg show "${WG_IFACE}" >/dev/null 2>&1; then
+  say "Interface ${WG_IFACE} läuft – stoppe es zuerst..."
+  sudo wg-quick down "${CONF_PATH}" || true
 fi
+
+# Jetzt starten – direkt mit deinem Pfad
+if ! sudo wg-quick up "${CONF_PATH}"; then
+  ERR=$?
+  # Rechte zurücksetzen, damit Web-UI weiterarbeiten kann
+  sudo chmod 666 "${CONF_PATH}"
+  say "Fehler: wg-quick up fehlgeschlagen (Code ${ERR})."
+  exit $ERR
+fi
+
+# Rechte zurück auf 666 (kompatibel mit deinem Web-Addon)
+sudo chmod 666 "${CONF_PATH}"
 
 # 7) Status ausgeben
 WG_STATUS=$(sudo wg show "${WG_IFACE}" 2>&1 || true)
-say "WireGuard-Status:"
+say "WireGuard-Status (${WG_IFACE}):"
 echo "data: --- STATUS BEGIN ---"
 echo ""
 echo "data: ${WG_STATUS//$'\n'/$'\ndata: '}"
@@ -109,4 +124,3 @@ echo "data: --- STATUS END ---"
 echo ""
 
 say "Fertig! Support Verbindung erfolgreich hergestellt."
-
