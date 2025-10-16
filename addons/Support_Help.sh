@@ -1,6 +1,7 @@
 #!/bin/bash
+# Datei: /usr/local/bin/wireguard_fetch_and_enable.sh
 
-LOGFILE="/var/log/wireguard_setup.log"
+LOGFILE="/var/log/support_help.log"
 exec > >(tee -a "$LOGFILE")
 exec 2>&1
 
@@ -9,276 +10,96 @@ echo "Cache-Control: no-cache"
 echo "Connection: keep-alive"
 echo ""
 
-exec 2>&1
+set -euo pipefail
 set -x
 
-echo "data: Starte Installation von WireGuard..."
-echo ""
+say() { echo "data: $*"; echo ""; }
 
-# 1. WireGuard installieren
-sudo apt update
-sudo apt install -y wireguard resolvconf
+say "Starte Support Help Funktion"
 
-# 2. Konfiguration vorbereiten
+# === Konfiguration ===
+ID_FILE="/opt/digitalflugbuch/data/DatenBuch/IDnummer.txt"
 CONF_PATH="/opt/digitalflugbuch/data/DatenBuch/wg0.conf"
-if [ ! -f "$CONF_PATH" ]; then
-  echo "data: Erstelle leere WireGuard-Konfiguration..."
-  sudo mkdir -p "$(dirname "$CONF_PATH")"
-  sudo touch "$CONF_PATH"
-  sudo chown www-data:www-data "$CONF_PATH"
-  sudo chmod 666 "$CONF_PATH"
+WG_IFACE="wg0"
+BASE_URL="https://flugbuch.gltdienst.home64.de/Support"
+USE_REWRITE=0   # 0 = fetch.php?id=<ID>, 1 = /Support/<ID>/wg0.conf
+# ======================
+
+# 1) WireGuard und curl sicherstellen
+say "Installiere erforderliche Pakete..."
+sudo apt-get update
+sudo apt-get install -y wireguard resolvconf curl ca-certificates
+
+# 2) ID aus Datei lesen
+if [[ ! -f "$ID_FILE" ]]; then
+  say "Fehler: ID-Datei nicht gefunden ($ID_FILE)"
+  exit 1
 fi
 
-# 3. CGI-Skript: control
-CGI_SCRIPT="/usr/lib/cgi-bin/wireguard_control.sh"
-sudo tee "$CGI_SCRIPT" > /dev/null << 'EOF'
-#!/bin/bash
-echo "Content-type: text/html"
+ID=$(grep -E '^ID:' "$ID_FILE" | awk -F': ' '{print $2}' | tr -d '\r' | xargs)
+if [[ -z "${ID:-}" ]]; then
+  say "Fehler: Keine gültige ID in $ID_FILE gefunden."
+  exit 1
+fi
+
+say "Gefundene ID: $ID"
+
+# 3) URL zusammensetzen
+if [[ "$USE_REWRITE" -eq 1 ]]; then
+  CONF_URL="${BASE_URL}/${ID}/wg0.conf"
+else
+  CONF_URL="${BASE_URL}/fetch.php?id=${ID}"
+fi
+
+say "Hole Konfiguration von: ${CONF_URL}"
+
+TMP_FILE=$(mktemp)
+
+HTTP_STATUS=$(curl -w "%{http_code}" -fsSL "${CONF_URL}" -o "${TMP_FILE}" || true)
+if [[ "$HTTP_STATUS" != "200" ]]; then
+  rm -f "${TMP_FILE}"
+  say "Fehler: Download fehlgeschlagen (HTTP ${HTTP_STATUS}). Abbruch."
+  exit 1
+fi
+
+# 4) Prüfen, ob gültige WireGuard-Konfig
+if ! grep -q '^\[Interface\]' "${TMP_FILE}"; then
+  rm -f "${TMP_FILE}"
+  say "Fehler: Keine gültige WireGuard-Konfiguration erkannt."
+  exit 1
+fi
+
+# 5) Datei speichern & Rechte setzen (wie im alten Script)
+sudo mkdir -p "$(dirname "$CONF_PATH")"
+sudo mv "${TMP_FILE}" "${CONF_PATH}"
+sudo chown www-data:www-data "${CONF_PATH}"
+sudo chmod 666 "${CONF_PATH}"
+
+say "Konfiguration gespeichert unter ${CONF_PATH} (Rechte 666, Eigentümer www-data)."
+
+# 6) Verbindung aktivieren
+if systemctl is-active --quiet "wg-quick@${WG_IFACE}"; then
+  say "Neustart von wg-quick@${WG_IFACE}..."
+  sudo systemctl restart "wg-quick@${WG_IFACE}" || {
+    say "Fehler: Neustart fehlgeschlagen."
+    exit 1
+  }
+else
+  say "Starte wg-quick@${WG_IFACE}..."
+  sudo systemctl enable --now "wg-quick@${WG_IFACE}" || {
+    say "Fehler: Start fehlgeschlagen."
+    exit 1
+  }
+fi
+
+# 7) Status ausgeben
+WG_STATUS=$(sudo wg show "${WG_IFACE}" 2>&1 || true)
+say "WireGuard-Status:"
+echo "data: --- STATUS BEGIN ---"
+echo ""
+echo "data: ${WG_STATUS//$'\n'/$'\ndata: '}"
+echo ""
+echo "data: --- STATUS END ---"
 echo ""
 
-WG_CONF="/opt/digitalflugbuch/data/DatenBuch/wg0.conf"
-POST_DATA=$(cat)
-
-urldecode() {
-  local data="${1//+/ }"
-  printf '%b' "${data//%/\\x}"
-}
-
-DECODED=$(urldecode "$POST_DATA")
-ACTION=$(printf '%s\n' "$DECODED" | sed -n 's/.*action=\([^&]*\).*/\1/p')
-CONFIG_CONTENT="${DECODED#*config=}"
-CONFIG_CONTENT="${CONFIG_CONTENT%%&action=*}"
-
-html_response() {
-  cat <<HTML
-<html>
-  <body>
-    <h2>$1</h2>
-    <pre style="background:#f0f0f0;padding:10px;border-radius:4px;">$2</pre>
-    <a href="/wireguard.html">Zur&uuml;ck zur Startseite</a>
-  </body>
-</html>
-HTML
-}
-
-case "$ACTION" in
-  start)
-    OUTPUT=$(sudo wg-quick up "$WG_CONF" 2>&1)
-    RET=$?
-    if [ $RET -eq 0 ]; then
-      html_response "WireGuard aktiviert." "$OUTPUT"
-    else
-      html_response "Fehler beim Starten von WireGuard (Code $RET):" "$OUTPUT"
-    fi
-    ;;
-  stop)
-    OUTPUT=$(sudo wg-quick down "$WG_CONF" 2>&1)
-    RET=$?
-    if [ $RET -eq 0 ]; then
-      html_response "WireGuard deaktiviert." "$OUTPUT"
-    else
-      html_response "Fehler beim Stoppen von WireGuard (Code $RET):" "$OUTPUT"
-    fi
-    ;;
-  update)
-    if [ -n "$CONFIG_CONTENT" ]; then
-      OUTPUT=$(printf '%s\n' "$CONFIG_CONTENT" | sudo tee "$WG_CONF" 2>&1)
-      sudo chmod 666 "$WG_CONF"
-      html_response "Konfiguration gespeichert." "$OUTPUT"
-    else
-      html_response "Keine Konfigurationsdaten übermittelt." ""
-    fi
-    ;;
-  autostart-on)
-    OUTPUT=$(sudo systemctl enable wg-custom.service 2>&1)
-    html_response "Autostart aktiviert." "$OUTPUT"
-    ;;
-  autostart-off)
-    OUTPUT=$(sudo systemctl disable wg-custom.service 2>&1)
-    html_response "Autostart deaktiviert." "$OUTPUT"
-    ;;
-  autostart-status)
-    OUTPUT=$(systemctl is-enabled wg-custom.service 2>&1)
-    html_response "Autostart-Status:" "$OUTPUT"
-    ;;
-  *)
-    html_response "Unbekannte Aktion: '$ACTION'." ""
-    ;;
-esac
-EOF
-sudo chmod +x "$CGI_SCRIPT"
-
-# 4. CGI-Skript: get current config
-GET_CONF="/usr/lib/cgi-bin/get_wg_conf.sh"
-sudo tee "$GET_CONF" > /dev/null << 'EOF'
-#!/bin/bash
-echo "Content-type: text/plain"
-echo ""
-cat /opt/digitalflugbuch/data/DatenBuch/wg0.conf
-EOF
-sudo chmod +x "$GET_CONF"
-
-# 5. HTML-Datei
-HTML_PATH="/var/www/html/wireguard.html"
-sudo tee "$HTML_PATH" > /dev/null << 'EOF'
-<!DOCTYPE html>
-<html lang="de">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>WireGuard Steuerung</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      background-color: #f4f7fc;
-      margin: 0;
-      padding: 0;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-    }
-    .container {
-      background-color: #ffffff;
-      padding: 30px;
-      border-radius: 12px;
-      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
-      max-width: 800px;
-      width: 100%;
-      text-align: center;
-    }
-    h1 {
-      font-size: 28px;
-      margin-bottom: 20px;
-    }
-    form {
-      margin: 15px 0;
-    }
-    .footer-note, .license-info {
-  margin-top: 20px;
-  font-size: 14px;
-  color: #666;
-}
-.license-info a {
-  color: #4CAF50;
-  text-decoration: none;
-}
-.license-info a:hover {
-  text-decoration: underline;
-}
-    button {
-      background-color: #4CAF50;
-      color: white;
-      padding: 10px 20px;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
-      font-size: 16px;
-      margin: 5px;
-      transition: 0.3s;
-    }
-    button:hover {
-      background-color: #45a049;
-      transform: scale(1.05);
-    }
-    textarea {
-      width: 100%;
-      height: 200px;
-      font-family: monospace;
-      padding: 10px;
-      border-radius: 8px;
-      border: 1px solid #ccc;
-      margin-top: 10px;
-    }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <h1>WireGuard Client Steuerung</h1>
-
-    <form method="post" action="/cgi-bin/wireguard_control.sh">
-      <button type="submit" name="action" value="start">Verbindung aktivieren</button>
-      <button type="submit" name="action" value="stop">Verbindung deaktivieren</button>
-    </form>
-
-    <form method="post" action="/cgi-bin/wireguard_control.sh">
-      <h2>Konfiguration bearbeiten</h2>
-      <textarea name="config" placeholder="[Interface] …"></textarea><br>
-      <button type="submit" name="action" value="update">Konfiguration speichern</button>
-    </form>
-
-    <form method="post" action="/cgi-bin/wireguard_control.sh">
-      <h2>Autostart-Verwaltung</h2>
-      <button type="submit" name="action" value="autostart-on">Autostart aktivieren</button>
-      <button type="submit" name="action" value="autostart-off">Autostart deaktivieren</button>
-      <button type="submit" name="action" value="autostart-status">Autostart-Status anzeigen</button>
-    </form>
-
-    <a href="index.html" class="back-to-home">Zur&uuml;ck zur Startseite</a>
-
-   <div class="footer-note">Powered by Ebner Stephan</div>
-    <div class="license-info">
-      <p>Dieses Projekt steht unter der <a href="https://github.com/stephanflug/digitales-Flugbuch/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">MIT-Lizenz</a>.</p>
-    </div>
-  </div>
-
-  <script>
-    window.addEventListener('DOMContentLoaded', () => {
-      fetch('/cgi-bin/get_wg_conf.sh')
-        .then(r => r.ok ? r.text() : Promise.reject(r.statusText))
-        .then(cfg => document.querySelector('textarea[name="config"]').value = cfg)
-        .catch(err => console.error('Konfig nicht geladen:', err));
-    });
-  </script>
-</body>
-</html>
-EOF
-
-# 6. Sudoers-Regeln
-SUDO_LINE1="www-data ALL=(ALL) NOPASSWD: /usr/bin/wg-quick"
-SUDO_LINE2="www-data ALL=(ALL) NOPASSWD: /bin/systemctl"
-
-if ! sudo grep -qF "$SUDO_LINE1" /etc/sudoers; then
-  echo "$SUDO_LINE1" | sudo tee -a /etc/sudoers > /dev/null
-fi
-if ! sudo grep -qF "$SUDO_LINE2" /etc/sudoers; then
-  echo "$SUDO_LINE2" | sudo tee -a /etc/sudoers > /dev/null
-fi
-
-# 7. Button auf index.html hinzufügen
-INDEX_HTML="/var/www/html/index.html"
-LINK='<button type="button" onclick="window.location.href='\''wireguard.html'\''">WireGuard</button>'
-if ! grep -q "wireguard.html" "$INDEX_HTML"; then
-  echo "data: Füge WireGuard-Link zur index.html hinzu..."
-  sudo sed -i "/<div class=\"button-container\">/,/<\/div>/ {
-    /<\/div>/ i \\        $LINK
-  }" "$INDEX_HTML"
-fi
-
-# 8. systemd-Service für Autostart erstellen
-SERVICE_FILE="/etc/systemd/system/wg-custom.service"
-if [ ! -f "$SERVICE_FILE" ]; then
-  echo "data: Erstelle systemd-Service für WireGuard Autostart..."
-  sudo tee "$SERVICE_FILE" > /dev/null <<EOF
-[Unit]
-Description=WireGuard VPN (custom config)
-After=network.target
-
-[Service]
-Type=oneshot
-ExecStart=/usr/bin/wg-quick up /opt/digitalflugbuch/data/DatenBuch/wg0.conf
-ExecStop=/usr/bin/wg-quick down /opt/digitalflugbuch/data/DatenBuch/wg0.conf
-RemainAfterExit=yes
-
-[Install]
-WantedBy=multi-user.target
-EOF
-
-  sudo systemctl daemon-reexec
-  sudo systemctl daemon-reload
-  sudo systemctl enable wg-custom.service
-fi
-
-echo ""
-echo "data: Fertig! Öffne im Browser: http://<IP>/wireguard.html"
-echo ""
+say "Fertig! Support Verbindung erfolgreich hergestellt."
