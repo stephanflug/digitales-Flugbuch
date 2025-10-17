@@ -1,5 +1,6 @@
 #!/bin/bash
 # All-in-one Systemcheck (SSE/CGI + Log)
+# - Führt sich selbst als root aus (auto-sudo)
 # - Sendet Live-Ausgabe via Server-Sent Events (SSE)
 # - Schreibt parallel in /var/log/systemcheck.log
 # - Löscht beim Start das alte Log
@@ -7,8 +8,24 @@
 
 set -euo pipefail
 
+# --------------------------- Root-Auto-Check ---------------------------
+if [ "$EUID" -ne 0 ]; then
+  # Wenn unter CGI: QUERY_STRING übergeben
+  if [ -n "${QUERY_STRING-}" ]; then
+    export QUERY_STRING
+  fi
+  # Neu starten mit sudo, falls verfügbar
+  if command -v sudo >/dev/null 2>&1; then
+    exec sudo -E bash "$0" "$@"
+  else
+    echo "Content-Type: text/plain"
+    echo
+    echo "Fehler: Dieses Script muss als root ausgeführt werden, sudo ist nicht verfügbar."
+    exit 1
+  fi
+fi
+
 # --------------------------- SSE/CGI Header ---------------------------
-# (immer senden, egal ob per Browser/CGI oder Shell)
 echo "Content-Type: text/event-stream"
 echo "Cache-Control: no-cache"
 echo "Connection: keep-alive"
@@ -21,15 +38,8 @@ have(){ command -v "$1" >/dev/null 2>&1; }
 # --------------------------- Modus bestimmen --------------------------
 FULL=0
 [[ "${1:-}" == "--full" ]] && FULL=1
-# CGI-Query: ?full=1
 if [ "${QUERY_STRING-}" != "" ] && echo "$QUERY_STRING" | grep -qE '(^|&)full=1(&|$)'; then
   FULL=1
-fi
-
-# --------------------------- Root-Check -------------------------------
-if [ "$EUID" -ne 0 ]; then
-  say "Fehler: Bitte als root ausführen."
-  exit 1
 fi
 
 # --------------------------- Log vorbereiten --------------------------
@@ -38,8 +48,8 @@ rm -f "$LOG" 2>/dev/null || true
 touch "$LOG"
 chmod 640 "$LOG"
 
-# Alle Ausgaben -> Log und gleichzeitig als SSE streamen
-exec > >(tee -a "$LOG" >(while IFS= read -r line; do echo "data: $line"; echo ""; done) >/dev/null) 2>&1
+# Alle Ausgaben -> Log + SSE streamen
+exec > >(stdbuf -i0 -oL -eL tee -a "$LOG" >(while IFS= read -r line; do echo "data: $line"; echo ""; done) >/dev/null) 2>&1
 
 # --------------------------- Startbanner ------------------------------
 section "Systemcheck gestartet"
@@ -192,13 +202,6 @@ echo
 echo "Konnektivität:"
 timeout 5 ping -c 2 1.1.1.1 >/dev/null 2>&1 && echo "Ping 1.1.1.1: OK" || echo "Ping 1.1.1.1: FEHLER"
 timeout 5 ping -c 2 google.com >/dev/null 2>&1 && echo "Ping google.com (DNS): OK" || echo "Ping google.com (DNS): FEHLER"
-echo
-echo "WLAN-Logs (letzte 50 Zeilen):"
-if systemctl is-enabled wpa_supplicant >/dev/null 2>&1 || systemctl status wpa_supplicant >/dev/null 2>&1; then
-  journalctl -u wpa_supplicant -b --no-pager -n 50 || true
-else
-  echo "wpa_supplicant nicht aktiv."
-fi
 
 # ------------------------------- Zeit/NTP -----------------------------
 section "Zeit & NTP"
@@ -208,38 +211,20 @@ if systemctl status systemd-timesyncd >/dev/null 2>&1; then
   echo "systemd-timesyncd Status:"
   systemctl status systemd-timesyncd --no-pager -n 0 || true
 fi
-if [ $FULL -eq 1 ] && have ntpdate; then
-  echo
-  echo "Uhr-Drift (ntpdate -q pool.ntp.org):"
-  ntpdate -q pool.ntp.org 2>/dev/null || echo "ntpdate nicht möglich."
-fi
 
 # -------------------------- Firewall / Sicherheit ---------------------
 section "Firewall/Sicherheit"
 if have ufw; then ufw status verbose || true; else echo "UFW nicht installiert."; fi
 if have nft; then echo; echo "nftables (Kurz):"; nft list ruleset 2>/dev/null | sed -n '1,120p' || true; fi
 if have iptables; then echo; echo "iptables (Kurz):"; iptables -S 2>/dev/null | sed -n '1,120p' || true; fi
-echo
-echo "SSH-Logs (letzte 50 Zeilen):"
-journalctl -u ssh -b --no-pager -n 50 2>/dev/null || echo "SSH-Dienst nicht vorhanden."
 
 # ------------------------------ Dienste ------------------------------
 section "Dienste (Docker, WireGuard, SSH)"
-if systemctl is-enabled docker >/dev/null 2>&1 || systemctl is-active docker >/devnull 2>&1; then
+if systemctl is-enabled docker >/dev/null 2>&1 || systemctl is-active docker >/dev/null 2>&1; then
   echo "Docker: $(systemctl is-active docker 2>/dev/null || echo unknown)"
   if have docker; then docker ps --format 'table {{.ID}}\t{{.Names}}\t{{.Status}}' 2>/dev/null || true; fi
 else
   echo "Docker nicht installiert/aktiv."
-fi
-if have wg; then
-  echo
-  echo "WireGuard (wg show):"
-  wg show 2>/dev/null || true
-fi
-if systemctl list-unit-files | grep -q '^wg-quick@'; then
-  echo
-  echo "wg-quick@wg0 Status:"
-  systemctl status wg-quick@wg0 --no-pager -n 20 2>/dev/null || true
 fi
 
 # ---------------------- Bootloader / EEPROM (Pi4) ---------------------
@@ -255,38 +240,10 @@ if have apt-get; then
   echo "Anzahl verfügbarer Upgrades (simuliert):"
   apt-get -s upgrade 2>/dev/null | grep -E '^[0-9]+ upgraded' || echo "Upgrade-Simulation nicht möglich."
 fi
-if have unattended-upgrade; then
-  echo
-  echo "Unattended-Upgrades Log (Kurz):"
-  ls -1 /var/log/unattended-upgrades/ 2>/dev/null | tail -n 5 || true
-fi
-
-# ----------------------------- SMART (Voll) ---------------------------
-if [ $FULL -eq 1 ]; then
-  section "SMART-Status (falls vorhanden)"
-  if have smartctl; then
-    for D in /dev/sd? /dev/nvme?n1; do
-      [ -b "$D" ] || continue
-      echo
-      echo "== $D =="
-      smartctl -H "$D" 2>/dev/null || echo "SMART nicht verfügbar für $D"
-    done
-  else
-    echo "smartctl nicht installiert."
-  fi
-  echo
-  echo "Blockgeräte:"
-  lsblk -o NAME,MODEL,SIZE,ROTA,TYPE,MOUNTPOINT | sed -n '1,200p'
-fi
 
 # ----------------------------- Zusammenfassung ------------------------
 section "Zusammenfassung"
 echo "Journal: ${ERRS} Fehler, ${WARNS} Warnungen seit Boot."
-if have vcgencmd && [[ -n "${VAL:-}" ]]; then
-  if [ "$VAL" -eq 0 ]; then echo "Throttling/Unterspannung: keine erkannt."
-  else echo "Throttling/Unterspannung: Hinweise vorhanden (siehe Abschnitt)."; fi
-fi
-echo "Root-Device: $rootdev"
 echo
 echo "Report gespeichert unter: $LOG"
 echo "Modus: $([ $FULL -eq 1 ] && echo 'VOLL' || echo 'SCHNELL')"
@@ -296,7 +253,6 @@ echo "Skript wird nun gelöscht (Log bleibt erhalten)."
 SCRIPT_PATH="$(realpath "$0")"
 rm -f "$SCRIPT_PATH" 2>/dev/null || true
 
-# Letzte SSE-Info (falls Browser zuhört)
 echo "data: Script wurde gelöscht – Log bleibt erhalten unter: $LOG"
 echo ""
 exit 0
