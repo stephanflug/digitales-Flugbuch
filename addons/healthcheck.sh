@@ -1,16 +1,19 @@
 #!/bin/bash
+# ======================================================================
 # All-in-one Systemcheck (SSE/CGI + Log)
-# - Führt sich selbst als root aus (auto-sudo)
+# - Führt sich automatisch als root aus (auto-sudo)
 # - Sendet Live-Ausgabe via Server-Sent Events (SSE)
 # - Schreibt parallel in /var/log/systemcheck.log
 # - Löscht beim Start das alte Log
+# - Setzt Berechtigungen 0664 (rw-rw-r--)
 # - Löscht sich nach Abschluss selbst (Log bleibt erhalten)
+# ======================================================================
 
 set -euo pipefail
 
 # --------------------------- Root-Auto-Check ---------------------------
 if [ "$EUID" -ne 0 ]; then
-  # Wenn unter CGI: QUERY_STRING übergeben
+  # Falls unter CGI ausgeführt, QUERY_STRING beibehalten
   if [ -n "${QUERY_STRING-}" ]; then
     export QUERY_STRING
   fi
@@ -20,7 +23,7 @@ if [ "$EUID" -ne 0 ]; then
   else
     echo "Content-Type: text/plain"
     echo
-    echo "Fehler: Dieses Script muss als root ausgeführt werden, sudo ist nicht verfügbar."
+    echo "Fehler: Dieses Script muss als root ausgeführt werden, und sudo ist nicht installiert."
     exit 1
   fi
 fi
@@ -46,9 +49,15 @@ fi
 LOG="/var/log/systemcheck.log"
 rm -f "$LOG" 2>/dev/null || true
 touch "$LOG"
-chmod 640 "$LOG"
 
-# Alle Ausgaben -> Log + SSE streamen
+# Eigentümer & Gruppe setzen – ggf. anpassen (z. B. root:www-data)
+chown root:www-data "$LOG" 2>/dev/null || true
+
+# Rechte 0664 (rw-rw-r--)
+chmod 0664 "$LOG"
+
+# --------------------------- Ausgabe-Umleitung ------------------------
+# Alle Ausgaben -> Log + SSE streamen (mit Line Buffering)
 exec > >(stdbuf -i0 -oL -eL tee -a "$LOG" >(while IFS= read -r line; do echo "data: $line"; echo ""; done) >/dev/null) 2>&1
 
 # --------------------------- Startbanner ------------------------------
@@ -76,12 +85,10 @@ echo "Disk /:          ${DISK_USED:-N/A} genutzt"
 
 if have vcgencmd; then
   echo "Temperatur:      $(vcgencmd measure_temp 2>/dev/null | sed 's/temp=//')"
+elif [ -r /sys/class/thermal/thermal_zone0/temp ]; then
+  printf "Temperatur:      %.1f'C\n" "$(awk '{print $1/1000}' /sys/class/thermal/thermal_zone0/temp)"
 else
-  if [ -r /sys/class/thermal/thermal_zone0/temp ]; then
-    printf "Temperatur:      %.1f'C\n" "$(awk '{print $1/1000}' /sys/class/thermal/thermal_zone0/temp)"
-  else
-    echo "Temperatur:      N/A"
-  fi
+  echo "Temperatur:      N/A"
 fi
 
 # --------------------------- Boot & Systemd ---------------------------
