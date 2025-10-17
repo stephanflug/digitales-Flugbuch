@@ -14,7 +14,7 @@
     },
     {
       "datei": "healthcheck.sh",
-      "beschreibung": "Zeigt CPU-Last, RAM-Auslastung, SD-Kartenspeicherplatz & Temperatur an",
+      "beschreibung": "Zeigt CPU-Last, RAM-Auslastung, SD-Kartenspeicherplatz & Temperatur und vieles mehr",
       "version": "2.0",
       "autor": "Ebner Stephan"
     },
@@ -68,6 +68,7 @@
     }
   ]
 }
+
 
 
 
