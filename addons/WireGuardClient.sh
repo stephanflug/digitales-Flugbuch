@@ -1,8 +1,8 @@
 #!/bin/bash
 # WireGuard Web-Installer (DNS-sicher & CGI-tauglich)
+# - Fixiert DNS VOR apt update (wichtig!)
 # - Installiert WireGuard
 # - Richtet CGI-Steuerung & HTML-Seite ein
-# - Fixiert DNS sauber (ohne Namensauflösung zu zerstören)
 # - Loggt nach /var/log/wireguard_setup.log (Fallback /tmp)
 
 set -Eeuo pipefail
@@ -29,33 +29,13 @@ trap 'sse "FEHLER: Installation abgebrochen (Zeile $LINENO). Siehe Log: $LOGFILE
 sse "Starte Installation von WireGuard..."
 log "=== START WireGuard-Setup ==="
 
-# ---------- System aktualisieren ----------
-sse "Aktualisiere Paketquellen..."
-log "apt update"
-sudo apt update >>"$LOGFILE" 2>&1
-
-# ---------- DNS-SAFE BLOCK: WireGuard + Resolver sauber einrichten ----------
-sse "Installiere WireGuard..."
-log "apt install -y wireguard"
-sudo apt install -y wireguard >>"$LOGFILE" 2>&1
-
-sse "Prüfe/konfiguriere DNS-Resolver..."
+# ---------- DNS VOR apt update sicherstellen ----------
+sse "Prüfe/konfiguriere DNS..."
 has_resolved=false
 if command -v systemctl >/dev/null 2>&1 && systemctl list-unit-files | grep -q '^systemd-resolved\.service'; then
   log "systemd-resolved erkannt → aktivieren"
-  sudo apt install -y systemd-resolved >>"$LOGFILE" 2>&1 || true
   sudo systemctl enable --now systemd-resolved >>"$LOGFILE" 2>&1 || true
   has_resolved=true
-fi
-
-if ! $has_resolved; then
-  # resolvconf nur bei Bedarf installieren
-  if ! dpkg -s resolvconf >/dev/null 2>&1; then
-    log "resolvconf nicht vorhanden → installieren"
-    sudo apt install -y resolvconf >>"$LOGFILE" 2>&1 || true
-  else
-    log "resolvconf bereits installiert"
-  fi
 fi
 
 fix_dns() {
@@ -65,12 +45,13 @@ fix_dns() {
       log "Link /etc/resolv.conf -> /run/systemd/resolve/resolv.conf setzen"
       sudo ln -sf /run/systemd/resolve/resolv.conf /etc/resolv.conf
     fi
-    # sinnvolle DNS setzen (falls resolvectl verfügbar)
-    IFACE=$(ip route get 1.1.1.1 2>/dev/null | awk '/ dev /{for(i=1;i<=NF;i++) if($i=="dev"){print $(i+1); exit}}')
-    if command -v resolvectl >/dev/null 2>&1 && [ -n "${IFACE:-}" ]; then
-      log "Setze DNS via resolvectl für $IFACE"
-      sudo resolvectl dns "$IFACE" 1.1.1.1 8.8.8.8 >>"$LOGFILE" 2>&1 || true
-      sudo resolvectl domain "$IFACE" "~." >>"$LOGFILE" 2>&1 || true
+    # Optionale DNS-Setzung (nicht kritisch, falls DHCP schon DNS liefert)
+    if command -v resolvectl >/dev/null 2>&1; then
+      IFACE=$(ip route get 1.1.1.1 2>/dev/null | awk '/ dev /{for(i=1;i<=NF;i++) if($i=="dev"){print $(i+1); exit}}')
+      if [ -n "${IFACE:-}" ]; then
+        sudo resolvectl dns "$IFACE" 1.1.1.1 8.8.8.8 >>"$LOGFILE" 2>&1 || true
+        sudo resolvectl domain "$IFACE" "~." >>"$LOGFILE" 2>&1 || true
+      fi
     fi
   else
     # Kein lokaler Stub → echte Nameserver in /etc/resolv.conf eintragen,
@@ -81,10 +62,24 @@ fix_dns() {
     else
       log "/etc/resolv.conf enthält bereits brauchbare Nameserver"
     fi
+    # Optional: persistente DNS für dhcpcd (falls vorhanden)
+    if command -v systemctl >/dev/null 2>&1 && systemctl list-unit-files | grep -q '^dhcpcd\.service'; then
+      if ! grep -q '^\s*interface\s\+wlan0' /etc/dhcpcd.conf 2>/dev/null || \
+         ! grep -q '^\s*static\s\+domain_name_servers=' /etc/dhcpcd.conf 2>/dev/null; then
+        log "Persistente DNS in /etc/dhcpcd.conf für wlan0 setzen"
+        sudo bash -c 'cat >>/etc/dhcpcd.conf <<EOF
+
+# DNS fest für WLAN (vom WireGuard-Setup-Script gesetzt)
+interface wlan0
+static domain_name_servers=1.1.1.1 8.8.8.8
+EOF'
+        sudo systemctl restart dhcpcd >>"$LOGFILE" 2>&1 || true
+      fi
+    fi
   fi
 }
-
 fix_dns
+
 # kurzer, nicht-fataler DNS-Selbsttest
 if ! getent hosts api.github.com >/dev/null 2>&1; then
   sse "WARNUNG: DNS-Auflösung für api.github.com fehlgeschlagen. Prüfe WLAN/AP-DNS."
@@ -92,6 +87,16 @@ if ! getent hosts api.github.com >/dev/null 2>&1; then
 else
   log "DNS-Check ok (api.github.com auflösbar)"
 fi
+
+# ---------- System aktualisieren ----------
+sse "Aktualisiere Paketquellen..."
+log "apt update"
+sudo apt update >>"$LOGFILE" 2>&1
+
+# ---------- WireGuard installieren ----------
+sse "Installiere WireGuard..."
+log "apt install -y wireguard"
+sudo apt install -y wireguard >>"$LOGFILE" 2>&1
 
 # ---------- WireGuard Konfigurationsdatei vorbereiten ----------
 CONF_PATH="/opt/digitalflugbuch/data/DatenBuch/wg0.conf"
