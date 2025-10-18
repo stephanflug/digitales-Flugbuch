@@ -1,6 +1,7 @@
 #!/bin/bash
 # Datei: /usr/local/bin/fix_dns.sh
 # Zweck: DNS reparieren (resolvconf entfernen, resolv.conf setzen, optional dhcpcd persistieren)
+#        + Optionaler Fallback-Schutz via NetworkManager-Dispatcher (99-fix-dns)
 # Ausgabe: Server-Sent Events (SSE) + Selbstlöschung am Ende
 
 # --- SSE Header ---
@@ -84,6 +85,30 @@ if curl -4 -sS https://api.github.com/ >/dev/null 2>&1; then
   say "OK: HTTPS erreichbar."
 else
   say "WARNUNG: HTTPS-Test fehlgeschlagen. Prüfe Internetzugang/Firewall/Proxy."
+fi
+
+# 6) OPTIONALER FALLBACK-SCHUTZ: NM-Dispatcher-Hook anlegen
+if command -v systemctl >/dev/null 2>&1 && systemctl list-unit-files | grep -q '^NetworkManager\.service'; then
+  say "Installiere NetworkManager-Dispatcher-Fallback (99-fix-dns)…"
+  sudo mkdir -p /etc/NetworkManager/dispatcher.d
+  sudo tee /etc/NetworkManager/dispatcher.d/99-fix-dns >/dev/null <<'EOF'
+#!/bin/bash
+# Fallback: Wenn eine Verbindung hochkommt, aber /etc/resolv.conf keine nameserver enthält,
+# setze sofort funktionierende DNS (Cloudflare + Google).
+IFACE="$1"
+STATE="$2"
+if [ "$STATE" = "up" ]; then
+  if ! grep -Eq '^\s*nameserver\s+\S+' /etc/resolv.conf 2>/dev/null; then
+    echo -e "nameserver 1.1.1.1\nnameserver 8.8.8.8" > /etc/resolv.conf
+  fi
+fi
+EOF
+  sudo chmod +x /etc/NetworkManager/dispatcher.d/99-fix-dns
+  # Dispatcher aktiv (Teil von NetworkManager) – NM kurz neu starten, damit Hook greift
+  sudo systemctl restart NetworkManager || true
+  say "Dispatcher-Fallback aktiv. DNS wird nach Verbindungsaufbau automatisch abgesichert."
+else
+  say "NetworkManager nicht gefunden – Dispatcher-Fallback wird übersprungen."
 fi
 
 say "Fertig."
