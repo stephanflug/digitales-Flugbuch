@@ -1,113 +1,35 @@
 #!/bin/bash
-# WireGuard Web-Installer (DNS-sicher & CGI-tauglich)
-# - Installiert WireGuard
-# - Richtet CGI-Steuerung & HTML-Seite ein
-# - Fixiert DNS sauber (ohne NamensauflÃ¶sung zu zerstÃ¶ren)
-# - Loggt nach /var/log/wireguard_setup.log (Fallback /tmp)
 
-set -Eeuo pipefail
+LOGFILE="/var/log/wireguard_setup.log"
+exec > >(tee -a "$LOGFILE")
+exec 2>&1
 
-# ---------- CGI-Header (Server-Sent Events) ----------
 echo "Content-Type: text/event-stream"
 echo "Cache-Control: no-cache"
 echo "Connection: keep-alive"
 echo ""
 
-# ---------- Logging vorbereiten (nur ins Log, nicht ins SSE) ----------
-LOGFILE="/var/log/wireguard_setup.log"
-if ! sudo touch "$LOGFILE" 2>/dev/null; then
-  LOGFILE="/tmp/wireguard_setup.log"
-  touch "$LOGFILE"
-fi
-exec 3>>"$LOGFILE"
+exec 2>&1
+set -x
 
-sse() { printf 'data: %s\n\n' "$*"; }
-log() { printf '%s %s\n' "$(date -Iseconds)" "$*" >&3; }
+echo "data: Starte Installation von WireGuard..."
+echo ""
 
-trap 'sse "FEHLER: Installation abgebrochen (Zeile $LINENO). Siehe Log: $LOGFILE"; exit 1' ERR
+# 1. WireGuard installieren (ohne resolvconf)
+sudo apt update
+sudo apt install -y wireguard
 
-sse "Starte Installation von WireGuard..."
-log "=== START WireGuard-Setup ==="
-
-# ---------- System aktualisieren ----------
-sse "Aktualisiere Paketquellen..."
-log "apt update"
-sudo apt update >>"$LOGFILE" 2>&1
-
-# ---------- DNS-SAFE BLOCK: WireGuard + Resolver sauber einrichten ----------
-sse "Installiere WireGuard..."
-log "apt install -y wireguard"
-sudo apt install -y wireguard >>"$LOGFILE" 2>&1
-
-sse "PrÃ¼fe/konfiguriere DNS-Resolver..."
-has_resolved=false
-if command -v systemctl >/dev/null 2>&1 && systemctl list-unit-files | grep -q '^systemd-resolved\.service'; then
-  log "systemd-resolved erkannt â†’ aktivieren"
-  sudo apt install -y systemd-resolved >>"$LOGFILE" 2>&1 || true
-  sudo systemctl enable --now systemd-resolved >>"$LOGFILE" 2>&1 || true
-  has_resolved=true
-fi
-
-if ! $has_resolved; then
-  # resolvconf nur bei Bedarf installieren
-  if ! dpkg -s resolvconf >/dev/null 2>&1; then
-    log "resolvconf nicht vorhanden â†’ installieren"
-    sudo apt install -y resolvconf >>"$LOGFILE" 2>&1 || true
-  else
-    log "resolvconf bereits installiert"
-  fi
-fi
-
-fix_dns() {
-  if $has_resolved && systemctl is-active --quiet systemd-resolved; then
-    # /etc/resolv.conf auf systemd-resolved linken
-    if [ ! -L /etc/resolv.conf ] || [ "$(readlink -f /etc/resolv.conf)" != "/run/systemd/resolve/resolv.conf" ]; then
-      log "Link /etc/resolv.conf -> /run/systemd/resolve/resolv.conf setzen"
-      sudo ln -sf /run/systemd/resolve/resolv.conf /etc/resolv.conf
-    fi
-    # sinnvolle DNS setzen (falls resolvectl verfÃ¼gbar)
-    IFACE=$(ip route get 1.1.1.1 2>/dev/null | awk '/ dev /{for(i=1;i<=NF;i++) if($i=="dev"){print $(i+1); exit}}')
-    if command -v resolvectl >/dev/null 2>&1 && [ -n "${IFACE:-}" ]; then
-      log "Setze DNS via resolvectl fÃ¼r $IFACE"
-      sudo resolvectl dns "$IFACE" 1.1.1.1 8.8.8.8 >>"$LOGFILE" 2>&1 || true
-      sudo resolvectl domain "$IFACE" "~." >>"$LOGFILE" 2>&1 || true
-    fi
-  else
-    # Kein lokaler Stub â†’ echte Nameserver in /etc/resolv.conf eintragen,
-    # sofern nicht bereits brauchbare Nameserver vorhanden sind
-    if ! grep -Eq '^\s*nameserver\s+(?!127\.0\.0\.1|127\.0\.0\.53)\S+' /etc/resolv.conf 2>/dev/null; then
-      log "Schreibe echte Nameserver in /etc/resolv.conf"
-      printf "nameserver 1.1.1.1\nnameserver 8.8.8.8\n" | sudo tee /etc/resolv.conf >/dev/null
-    else
-      log "/etc/resolv.conf enthÃ¤lt bereits brauchbare Nameserver"
-    fi
-  fi
-}
-
-fix_dns
-# kurzer, nicht-fataler DNS-Selbsttest
-if ! getent hosts api.github.com >/dev/null 2>&1; then
-  sse "WARNUNG: DNS-AuflÃ¶sung fÃ¼r api.github.com fehlgeschlagen. PrÃ¼fe WLAN/AP-DNS."
-  log "WARN: getent hosts api.github.com fehlgeschlagen"
-else
-  log "DNS-Check ok (api.github.com auflÃ¶sbar)"
-fi
-
-# ---------- WireGuard Konfigurationsdatei vorbereiten ----------
+# 2. Konfiguration vorbereiten
 CONF_PATH="/opt/digitalflugbuch/data/DatenBuch/wg0.conf"
 if [ ! -f "$CONF_PATH" ]; then
-  sse "Erstelle leere WireGuard-Konfiguration..."
-  log "mkdir -p $(dirname "$CONF_PATH")"
-  sudo mkdir -p "$(dirname "$CONF_PATH")" >>"$LOGFILE" 2>&1
-  sudo touch "$CONF_PATH" >>"$LOGFILE" 2>&1
-  sudo chown www-data:www-data "$CONF_PATH" >>"$LOGFILE" 2>&1 || true
-  sudo chmod 666 "$CONF_PATH" >>"$LOGFILE" 2>&1 || true
-else
-  log "WireGuard-Konfiguration existiert bereits: $CONF_PATH"
+  echo "data: Erstelle leere WireGuard-Konfiguration..."
+  sudo mkdir -p "$(dirname "$CONF_PATH")"
+  sudo touch "$CONF_PATH"
+  sudo chown www-data:www-data "$CONF_PATH"
+  sudo chmod 666 "$CONF_PATH"
 fi
 
-# ---------- CGI-Skript: Steuerung ----------
-sse "Installiere CGI-Steuerung..."
+# 3. CGI-Skript: control
 CGI_SCRIPT="/usr/lib/cgi-bin/wireguard_control.sh"
 sudo tee "$CGI_SCRIPT" > /dev/null << 'EOF'
 #!/bin/bash
@@ -141,16 +63,22 @@ HTML
 
 case "$ACTION" in
   start)
-    OUTPUT=$(sudo /usr/bin/wg-quick up "$WG_CONF" 2>&1)
+    OUTPUT=$(sudo wg-quick up "$WG_CONF" 2>&1)
     RET=$?
-    if [ $RET -eq 0 ]; then html_response "WireGuard aktiviert." "$OUTPUT"
-    else html_response "Fehler beim Starten von WireGuard (Code $RET):" "$OUTPUT"; fi
+    if [ $RET -eq 0 ]; then
+      html_response "WireGuard aktiviert." "$OUTPUT"
+    else
+      html_response "Fehler beim Starten von WireGuard (Code $RET):" "$OUTPUT"
+    fi
     ;;
   stop)
-    OUTPUT=$(sudo /usr/bin/wg-quick down "$WG_CONF" 2>&1)
+    OUTPUT=$(sudo wg-quick down "$WG_CONF" 2>&1)
     RET=$?
-    if [ $RET -eq 0 ]; then html_response "WireGuard deaktiviert." "$OUTPUT"
-    else html_response "Fehler beim Stoppen von WireGuard (Code $RET):" "$OUTPUT"; fi
+    if [ $RET -eq 0 ]; then
+      html_response "WireGuard deaktiviert." "$OUTPUT"
+    else
+      html_response "Fehler beim Stoppen von WireGuard (Code $RET):" "$OUTPUT"
+    fi
     ;;
   update)
     if [ -n "$CONFIG_CONTENT" ]; then
@@ -158,19 +86,19 @@ case "$ACTION" in
       sudo chmod 666 "$WG_CONF"
       html_response "Konfiguration gespeichert." "$OUTPUT"
     else
-      html_response "Keine Konfigurationsdaten Ã¼bermittelt." ""
+      html_response "Keine Konfigurationsdaten übermittelt." ""
     fi
     ;;
   autostart-on)
-    OUTPUT=$(sudo /bin/systemctl enable wg-custom.service 2>&1)
+    OUTPUT=$(sudo systemctl enable wg-custom.service 2>&1)
     html_response "Autostart aktiviert." "$OUTPUT"
     ;;
   autostart-off)
-    OUTPUT=$(sudo /bin/systemctl disable wg-custom.service 2>&1)
+    OUTPUT=$(sudo systemctl disable wg-custom.service 2>&1)
     html_response "Autostart deaktiviert." "$OUTPUT"
     ;;
   autostart-status)
-    OUTPUT=$(/bin/systemctl is-enabled wg-custom.service 2>&1)
+    OUTPUT=$(systemctl is-enabled wg-custom.service 2>&1)
     html_response "Autostart-Status:" "$OUTPUT"
     ;;
   *)
@@ -178,9 +106,9 @@ case "$ACTION" in
     ;;
 esac
 EOF
-sudo chmod +x "$CGI_SCRIPT" >>"$LOGFILE" 2>&1
+sudo chmod +x "$CGI_SCRIPT"
 
-# ---------- CGI-Skript: aktuelle Konfiguration ausgeben ----------
+# 4. CGI-Skript: get current config
 GET_CONF="/usr/lib/cgi-bin/get_wg_conf.sh"
 sudo tee "$GET_CONF" > /dev/null << 'EOF'
 #!/bin/bash
@@ -188,10 +116,9 @@ echo "Content-type: text/plain"
 echo ""
 cat /opt/digitalflugbuch/data/DatenBuch/wg0.conf
 EOF
-sudo chmod +x "$GET_CONF" >>"$LOGFILE" 2>&1
+sudo chmod +x "$GET_CONF"
 
-# ---------- HTML-Seite ----------
-sse "Erzeuge HTML-Steuerseite..."
+# 5. HTML-Datei
 HTML_PATH="/var/www/html/wireguard.html"
 sudo tee "$HTML_PATH" > /dev/null << 'EOF'
 <!DOCTYPE html>
@@ -201,19 +128,68 @@ sudo tee "$HTML_PATH" > /dev/null << 'EOF'
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>WireGuard Steuerung</title>
   <style>
-    body { font-family: Arial, sans-serif; background-color: #f4f7fc; margin:0; padding:0;
-           display:flex; justify-content:center; align-items:center; height:100vh; }
-    .container { background:#fff; padding:30px; border-radius:12px;
-                 box-shadow:0 6px 16px rgba(0,0,0,0.15); max-width:800px; width:100%; text-align:center; }
-    h1 { font-size:28px; margin-bottom:20px; }
-    form { margin:15px 0; }
-    button { background:#4CAF50; color:#fff; padding:10px 20px; border:none; border-radius:8px;
-             cursor:pointer; font-size:16px; margin:5px; transition:0.3s; }
-    button:hover { background:#45a049; transform:scale(1.05); }
-    textarea { width:100%; height:200px; font-family:monospace; padding:10px;
-               border-radius:8px; border:1px solid #ccc; margin-top:10px; }
-    .footer-note, .license-info { margin-top:20px; font-size:14px; color:#666; }
-    .license-info a { color:#4CAF50; text-decoration:none; } .license-info a:hover { text-decoration:underline; }
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f4f7fc;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+    .container {
+      background-color: #ffffff;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
+      max-width: 800px;
+      width: 100%;
+      text-align: center;
+    }
+    h1 {
+      font-size: 28px;
+      margin-bottom: 20px;
+    }
+    form {
+      margin: 15px 0;
+    }
+    .footer-note, .license-info {
+      margin-top: 20px;
+      font-size: 14px;
+      color: #666;
+    }
+    .license-info a {
+      color: #4CAF50;
+      text-decoration: none;
+    }
+    .license-info a:hover {
+      text-decoration: underline;
+    }
+    button {
+      background-color: #4CAF50;
+      color: white;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 16px;
+      margin: 5px;
+      transition: 0.3s;
+    }
+    button:hover {
+      background-color: #45a049;
+      transform: scale(1.05);
+    }
+    textarea {
+      width: 100%;
+      height: 200px;
+      font-family: monospace;
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      margin-top: 10px;
+    }
   </style>
 </head>
 <body>
@@ -227,7 +203,7 @@ sudo tee "$HTML_PATH" > /dev/null << 'EOF'
 
     <form method="post" action="/cgi-bin/wireguard_control.sh">
       <h2>Konfiguration bearbeiten</h2>
-      <textarea name="config" placeholder="[Interface] â€¦"></textarea><br>
+      <textarea name="config" placeholder="[Interface] …"></textarea><br>
       <button type="submit" name="action" value="update">Konfiguration speichern</button>
     </form>
 
@@ -258,34 +234,31 @@ sudo tee "$HTML_PATH" > /dev/null << 'EOF'
 </html>
 EOF
 
-# ---------- Sudoers (sauber via /etc/sudoers.d) ----------
-sse "Setze Sudo-Rechte fÃ¼r www-data..."
-SUDO_DROPIN="/etc/sudoers.d/wireguard-web"
-sudo bash -c "cat > '$SUDO_DROPIN' <<'EOSUDO'
-www-data ALL=(ALL) NOPASSWD: /usr/bin/wg-quick, /bin/systemctl
-Defaults:www-data !requiretty
-EOSUDO"
-# Syntax prÃ¼fen
-sudo visudo -cf "$SUDO_DROPIN" >>"$LOGFILE" 2>&1 || { sse "FEHLER: /etc/sudoers.d/wireguard-web ungÃ¼ltig"; exit 1; }
+# 6. Sudoers-Regeln
+SUDO_LINE1="www-data ALL=(ALL) NOPASSWD: /usr/bin/wg-quick"
+SUDO_LINE2="www-data ALL=(ALL) NOPASSWD: /bin/systemctl"
 
-# ---------- Button auf index.html hinzufÃ¼gen (falls vorhanden) ----------
-INDEX_HTML="/var/www/html/index.html"
-LINK='<button type="button" onclick="window.location.href='\''wireguard.html'\''">WireGuard</button>'
-if [ -f "$INDEX_HTML" ]; then
-  if ! grep -q "wireguard.html" "$INDEX_HTML"; then
-    sse "ErgÃ¤nze Link auf wireguard.html in index.html..."
-    if grep -q '<div class="button-container">' "$INDEX_HTML"; then
-      sudo sed -i "/<div class=\"button-container\">/,/<\/div>/ { /<\/div>/ i \\        $LINK }" "$INDEX_HTML"
-    else
-      printf '\n<div class="button-container">\n  %s\n</div>\n' "$LINK" | sudo tee -a "$INDEX_HTML" >/dev/null
-    fi
-  fi
+if ! sudo grep -qF "$SUDO_LINE1" /etc/sudoers; then
+  echo "$SUDO_LINE1" | sudo tee -a /etc/sudoers > /dev/null
+fi
+if ! sudo grep -qF "$SUDO_LINE2" /etc/sudoers; then
+  echo "$SUDO_LINE2" | sudo tee -a /etc/sudoers > /dev/null
 fi
 
-# ---------- systemd-Service fÃ¼r Autostart ----------
-sse "Erzeuge/aktiviere systemd-Service fÃ¼r Autostart..."
+# 7. Button auf index.html hinzufügen
+INDEX_HTML="/var/www/html/index.html"
+LINK='<button type="button" onclick="window.location.href='\''wireguard.html'\''">WireGuard</button>'
+if ! grep -q "wireguard.html" "$INDEX_HTML"; then
+  echo "data: Füge WireGuard-Link zur index.html hinzu..."
+  sudo sed -i "/<div class=\"button-container\">/,/<\/div>/ {
+    /<\/div>/ i \\        $LINK
+  }" "$INDEX_HTML"
+fi
+
+# 8. systemd-Service für Autostart erstellen
 SERVICE_FILE="/etc/systemd/system/wg-custom.service"
 if [ ! -f "$SERVICE_FILE" ]; then
+  echo "data: Erstelle systemd-Service für WireGuard Autostart..."
   sudo tee "$SERVICE_FILE" > /dev/null <<EOF
 [Unit]
 Description=WireGuard VPN (custom config)
@@ -300,9 +273,12 @@ RemainAfterExit=yes
 [Install]
 WantedBy=multi-user.target
 EOF
-fi
-sudo systemctl daemon-reload >>"$LOGFILE" 2>&1
-sudo systemctl enable wg-custom.service >>"$LOGFILE" 2>&1 || true
 
-sse "Fertig! Ã–ffne im Browser: http://<IP>/wireguard.html"
-log "=== DONE WireGuard-Setup ==="
+  sudo systemctl daemon-reexec
+  sudo systemctl daemon-reload
+  sudo systemctl enable wg-custom.service
+fi
+
+echo ""
+echo "data: Fertig! Öffne im Browser: http://<IP>/wireguard.html"
+echo ""
