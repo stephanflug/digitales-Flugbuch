@@ -1,6 +1,6 @@
 #!/bin/bash
 # Datei: /usr/local/bin/wireguard_fetch_and_enable.sh
-# Zweck: WG-Konfig laden, speichern und Interface starten – DNS-sicher (ohne resolvconf)
+# Zweck: WG-Konfig laden, speichern und Interface starten – ohne DNS-Manipulation
 
 # --- CGI / Streaming-Header ---
 echo "Content-Type: text/event-stream"
@@ -37,49 +37,18 @@ say "Starte Support Help Funktion"
 # === Konfiguration ===
 ID_FILE="/opt/digitalflugbuch/data/DatenBuch/IDnummer.txt"
 CONF_PATH="/opt/digitalflugbuch/data/DatenBuch/wg0.conf"
-WG_IFACE="wg0"   # muss dem Interface-Namen in der wg0.conf entsprechen
+WG_IFACE="wg0"
 BASE_URL="https://flugbuch.gltdienst.home64.de/Support"
-USE_REWRITE=0    # 0 = fetch.php?id=<ID>, 1 = /Support/<ID>/wg0.conf
+USE_REWRITE=0
 # ======================
 
-# 1) Pakete sicherstellen (ohne resolvconf)
+# 1) Pakete sicherstellen
 say "Installiere erforderliche Pakete..."
 sudo apt-get update
 sudo apt-get install -y wireguard curl ca-certificates
 
-# 1a) DNS-SAFE: sicherstellen, dass Namen auflösbar sind (ohne resolvconf)
-ensure_dns() {
-  # Falls systemd-resolved existiert: aktivieren & /etc/resolv.conf verlinken
-  if systemctl list-unit-files 2>/dev/null | grep -q '^systemd-resolved\.service'; then
-    sudo systemctl enable --now systemd-resolved || true
-    if [ ! -L /etc/resolv.conf ] || [ "$(readlink -f /etc/resolv.conf)" != "/run/systemd/resolve/resolv.conf" ]; then
-      sudo ln -sf /run/systemd/resolve/resolv.conf /etc/resolv.conf
-    fi
-    if command -v resolvectl >/dev/null 2>&1; then
-      IFACE=$(ip route get 1.1.1.1 2>/dev/null | awk '/ dev /{for(i=1;i<=NF;i++) if($i=="dev"){print $(i+1); exit}}')
-      [ -n "${IFACE:-}" ] && { sudo resolvectl dns "$IFACE" 1.1.1.1 8.8.8.8 || true; sudo resolvectl domain "$IFACE" "~." || true; }
-    fi
-  else
-    # Kein systemd-resolved: echte Nameserver sicherstellen
-    if ! grep -Eq '^\s*nameserver\s+(?!127\.0\.0\.1|127\.0\.0\.53)\S+' /etc/resolv.conf 2>/dev/null; then
-      printf "nameserver 1.1.1.1\nnameserver 8.8.8.8\n" | sudo tee /etc/resolv.conf >/dev/null
-    fi
-    # Optional: persistente DNS für dhcpcd (falls vorhanden)
-    if systemctl list-unit-files 2>/dev/null | grep -q '^dhcpcd\.service'; then
-      if ! grep -q '^\s*interface\s\+wlan0' /etc/dhcpcd.conf 2>/dev/null || ! grep -q '^\s*static\s\+domain_name_servers=' /etc/dhcpcd.conf 2>/dev/null; then
-        sudo bash -c 'cat >>/etc/dhcpcd.conf <<EOF
-
-# DNS fest für WLAN (vom Support-Script gesetzt)
-interface wlan0
-static domain_name_servers=1.1.1.1 8.8.8.8
-EOF'
-        sudo systemctl restart dhcpcd || true
-      fi
-    fi
-  fi
-}
-
-ensure_dns
+# --- KEINE DNS-Änderungen mehr ---
+say "Überspringe DNS-Konfiguration (wird extern verwaltet)..."
 
 # 2) ID aus Datei lesen
 if [[ ! -f "$ID_FILE" ]]; then
@@ -104,7 +73,7 @@ say "Hole Konfiguration von: ${CONF_URL}"
 
 TMP_FILE=$(mktemp)
 
-# 3a) Robuster Download: IPv4, User-Agent, Timeout, Retry; HTTP-Status prüfen
+# 3a) Robuster Download mit Fallback
 HTTP_STATUS=$(curl -4 -A "curl" -m 20 --retry 3 --retry-delay 1 \
   -w "%{http_code}" -fsSL "${CONF_URL}" -o "${TMP_FILE}" || true)
 if [[ "$HTTP_STATUS" != "200" ]]; then
@@ -120,7 +89,7 @@ if ! grep -q '^\[Interface\]' "${TMP_FILE}"; then
   exit 1
 fi
 
-# 5) Datei speichern & Rechte setzen (für Web-Addon)
+# 5) Datei speichern & Rechte setzen
 sudo mkdir -p "$(dirname "$CONF_PATH")"
 sudo mv "${TMP_FILE}" "${CONF_PATH}"
 TMP_FILE=""
@@ -128,13 +97,11 @@ sudo chown www-data:www-data "${CONF_PATH}"
 sudo chmod 666 "${CONF_PATH}"
 say "Konfiguration gespeichert unter ${CONF_PATH} (Rechte 666, Eigentümer www-data)."
 
-# 6) Verbindung aktivieren (direkt mit deiner Datei)
+# 6) Verbindung aktivieren
 say "Starte WireGuard über ${CONF_PATH} (ohne Kopie/Unit)..."
-
-# wg-quick verlangt restriktive Rechte -> temporär 600 setzen
 sudo chmod 600 "${CONF_PATH}"
 
-# Falls Interface bereits läuft: zuerst sauber stoppen
+# Falls Interface bereits läuft
 if sudo wg show "${WG_IFACE}" >/dev/null 2>&1; then
   say "Interface ${WG_IFACE} läuft – stoppe es zuerst..."
   sudo wg-quick down "${CONF_PATH}" || true
@@ -148,7 +115,6 @@ if ! sudo wg-quick up "${CONF_PATH}"; then
   exit $ERR
 fi
 
-# Rechte zurück auf 666 (kompatibel mit Web-UI)
 sudo chmod 666 "${CONF_PATH}"
 
 # 7) Status ausgeben
