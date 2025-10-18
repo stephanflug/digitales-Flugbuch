@@ -65,9 +65,16 @@
       "beschreibung": "Mit dem Add-on kann der Support den Anwender bei Problemen oder anderen Anliegen aus der Ferne unterstützen.Dazu muss zuvor lediglich die eindeutige ID des installierten Systems an den Support übermittelt werden.Nach erfolgreicher Bestätigung kann das Add-on anschließend installiert werden.",
       "version": "2.0",
       "autor": "Ebner Stephan"
+    },
+    {
+      "datei": "DNS_repair.sh",
+      "beschreibung": "Dieses Script dient zur automatischen Reparatur der DNS-Auflösung auf einem Raspberry Pi System, wenn Namen (z. B. api.github.com) nicht mehr aufgelöst werden können, obwohl Internetzugang über IP-Adressen (z. B. 8.8.8.8) funktioniert.",
+      "version": "1.0",
+      "autor": "Ebner Stephan"
     }
   ]
 }
+
 
 
 
