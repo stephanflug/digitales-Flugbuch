@@ -1,14 +1,17 @@
 #!/bin/bash
 # Datei: /usr/local/bin/wireguard_fetch_and_enable.sh
+# Zweck: WG-Konfig laden, speichern und Interface starten – mit DNS-sicherem Fetch
 
-LOGFILE="/var/log/support_help.log"
-exec > >(tee -a "$LOGFILE")
-exec 2>&1
-
+# --- CGI / Streaming-Header ---
 echo "Content-Type: text/event-stream"
 echo "Cache-Control: no-cache"
 echo "Connection: keep-alive"
 echo ""
+
+# --- Logging ---
+LOGFILE="/var/log/support_help.log"
+exec > >(tee -a "$LOGFILE")
+exec 2>&1
 
 set -euo pipefail
 set -x
@@ -18,13 +21,13 @@ say() { echo "data: $*"; echo ""; }
 SCRIPT_PATH="$(realpath "$0")"
 TMP_FILE=""
 
-# Löscht sich NUR bei Fehler (Exit-Code != 0) und räumt Temp-Datei auf
+# Löscht Temp-Datei. Bei Fehler zusätzlich Script entfernen (wie bei dir gewünscht).
 trap '
   rc=$?
-  if [ -n "${TMP_FILE:-}" ] && [ -f "$TMP_FILE" ]; then rm -f "$TMP_FILE"; fi
+  [ -n "${TMP_FILE:-}" ] && [ -f "$TMP_FILE" ] && rm -f "$TMP_FILE"
   if [ $rc -ne 0 ]; then
     say "Fehler aufgetreten (Exit-Code $rc) – Script wird entfernt..."
-    rm -f "$SCRIPT_PATH"
+    rm -f "$SCRIPT_PATH" || true
   fi
   exit $rc
 ' EXIT
@@ -39,10 +42,37 @@ BASE_URL="https://flugbuch.gltdienst.home64.de/Support"
 USE_REWRITE=0    # 0 = fetch.php?id=<ID>, 1 = /Support/<ID>/wg0.conf
 # ======================
 
-# 1) WireGuard und curl sicherstellen
+# 1) Pakete sicherstellen (ohne DNS kaputt zu machen)
 say "Installiere erforderliche Pakete..."
 sudo apt-get update
-sudo apt-get install -y wireguard resolvconf curl ca-certificates
+# WireGuard & curl/CA; resolvconf nur, wenn weder systemd-resolved läuft noch resolvconf bereits installiert ist
+sudo apt-get install -y wireguard curl ca-certificates
+if ! systemctl list-unit-files 2>/dev/null | grep -q '^systemd-resolved\.service'; then
+  dpkg -s resolvconf >/dev/null 2>&1 || sudo apt-get install -y resolvconf || true
+fi
+
+# 1a) DNS-SAFE: sicherstellen, dass Namen auflösbar sind
+ensure_dns() {
+  # Wenn systemd-resolved vorhanden → aktivieren & /etc/resolv.conf verlinken
+  if systemctl list-unit-files 2>/dev/null | grep -q '^systemd-resolved\.service'; then
+    sudo systemctl enable --now systemd-resolved || true
+    if [ ! -L /etc/resolv.conf ] || [ "$(readlink -f /etc/resolv.conf)" != "/run/systemd/resolve/resolv.conf" ]; then
+      sudo ln -sf /run/systemd/resolve/resolv.conf /etc/resolv.conf
+    fi
+    # Falls resolvectl verfügbar: sinnvolle DNS auf aktivem Interface setzen (non-fatal)
+    if command -v resolvectl >/dev/null 2>&1; then
+      IFACE=$(ip route get 1.1.1.1 2>/dev/null | awk '/ dev /{for(i=1;i<=NF;i++) if($i=="dev"){print $(i+1); exit}}')
+      [ -n "${IFACE:-}" ] && { sudo resolvectl dns "$IFACE" 1.1.1.1 8.8.8.8 || true; sudo resolvectl domain "$IFACE" "~." || true; }
+    fi
+  else
+    # Kein systemd-resolved: prüfe, ob in /etc/resolv.conf brauchbare Nameserver stehen
+    if ! grep -Eq '^\s*nameserver\s+(?!127\.0\.0\.1|127\.0\.0\.53)\S+' /etc/resolv.conf 2>/dev/null; then
+      printf "nameserver 1.1.1.1\nnameserver 8.8.8.8\n" | sudo tee /etc/resolv.conf >/dev/null
+    fi
+  fi
+}
+
+ensure_dns
 
 # 2) ID aus Datei lesen
 if [[ ! -f "$ID_FILE" ]]; then
@@ -67,7 +97,9 @@ say "Hole Konfiguration von: ${CONF_URL}"
 
 TMP_FILE=$(mktemp)
 
-HTTP_STATUS=$(curl -w "%{http_code}" -fsSL "${CONF_URL}" -o "${TMP_FILE}" || true)
+# 3a) Robuster Download: IPv4, User-Agent, Timeout, Retry; HTTP-Status prüfen
+HTTP_STATUS=$(curl -4 -A "curl" -m 20 --retry 3 --retry-delay 1 \
+  -w "%{http_code}" -fsSL "${CONF_URL}" -o "${TMP_FILE}" || true)
 if [[ "$HTTP_STATUS" != "200" ]]; then
   rm -f "${TMP_FILE}"
   say "Fehler: Download fehlgeschlagen (HTTP ${HTTP_STATUS}). Abbruch."
