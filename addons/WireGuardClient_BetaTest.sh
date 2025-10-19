@@ -144,6 +144,71 @@ exit 0
 EOF
 sudo chmod +x "$GET_CONF"
 
+# 4b. CGI-Skript: WireGuard-Status als JSON
+STATUS_CGI="/usr/lib/cgi-bin/wireguard_status.sh"
+sudo tee "$STATUS_CGI" > /dev/null << 'EOF'
+#!/bin/bash
+# JSON-Status für WireGuard (wg0) – lighttpd + mod_cgi
+
+set -euo pipefail
+
+WG_IF="wg0"
+WG_BIN="$(command -v wg || echo /usr/bin/wg)"
+IP_BIN="$(command -v ip || echo /usr/sbin/ip)"
+
+echo "Content-Type: application/json; charset=utf-8"
+echo "Cache-Control: no-cache, no-store, must-revalidate"
+echo "Pragma: no-cache"
+echo "Expires: 0"
+echo ""
+
+if ! $IP_BIN link show "$WG_IF" >/dev/null 2>&1; then
+  printf '{"ok":false,"iface":"%s","error":"Interface nicht gefunden"}\n' "$WG_IF"
+  exit 0
+fi
+
+state="$($IP_BIN link show "$WG_IF" | awk '/state/ {print $9; exit}')"
+[ -z "${state:-}" ] && state="UNKNOWN"
+addrs4="$($IP_BIN -4 -o addr show dev "$WG_IF" 2>/dev/null | awk '{print $4}' | paste -sd',' - || true)"
+addrs6="$($IP_BIN -6 -o addr show dev "$WG_IF" 2>/dev/null | awk '{print $4}' | paste -sd',' - || true)"
+
+dump="$($WG_BIN show "$WG_IF" dump 2>/dev/null || true)"
+peers_json="[]"
+if [ -n "$dump" ]; then
+  peers_json="["
+  echo "$dump" | tail -n +2 | while IFS=$'\t' read -r pubkey psk endpoint allowed_ips latest_hs rx tx keepalive rest; do
+    if [ "${latest_hs:-0}" -gt 0 ]; then
+      hs_ago=$(( $(date +%s) - latest_hs ))
+    else
+      hs_ago=-1
+    fi
+    [ -z "${endpoint:-}" ] && endpoint="(keiner)"
+    printf '{'
+    printf '"public_key":"%s",'  "$pubkey"
+    printf '"endpoint":"%s",'    "$endpoint"
+    printf '"allowed_ips":"%s",' "$allowed_ips"
+    printf '"latest_handshake_epoch":%s,' "${latest_hs:-0}"
+    printf '"latest_handshake_ago":%s,'   "${hs_ago}"
+    printf '"transfer_rx":%s,'             "${rx:-0}"
+    printf '"transfer_tx":%s,'             "${tx:-0}"
+    printf '"persistent_keepalive":"%s"'   "${keepalive:-0}"
+    printf '},'
+  done | sed 's/,$//'
+  peers_json="$peers_json$(cat)"]  # Array schließen
+fi
+
+printf '{'
+printf '"ok":true,'
+printf '"iface":"%s",' "$WG_IF"
+printf '"state":"%s",' "$state"
+printf '"addresses_v4":[%s],' "$( [ -n "$addrs4" ] && printf '"%s"' "$addrs4" | sed 's/,/","/g' )"
+printf '"addresses_v6":[%s],' "$( [ -n "$addrs6" ] && printf '"%s"' "$addrs6" | sed 's/,/","/g' )"
+printf '"peers":%s' "$peers_json"
+printf '}\n'
+EOF
+sudo chmod 755 "$STATUS_CGI"
+
+
 # 5. HTML-Datei
 HTML_PATH="/var/www/html/wireguard.html"
 sudo tee "$HTML_PATH" > /dev/null << 'EOF'
@@ -242,6 +307,19 @@ sudo tee "$HTML_PATH" > /dev/null << 'EOF'
 
     <a href="index.html" class="back-to-home">Zur&uuml;ck zur Startseite</a>
 
+<hr style="margin:24px 0;border:none;border-top:1px solid #ddd">
+<h2>WireGuard-Status</h2>
+<div id="wg-status" style="text-align:left; margin:0 auto; max-width:680px;">
+  <div><b>Interface:</b> <span id="st-iface">-</span></div>
+  <div><b>Status:</b> <span id="st-state">-</span></div>
+  <div><b>Adresse(n) v4:</b> <span id="st-v4">-</span></div>
+  <div><b>Adresse(n) v6:</b> <span id="st-v6">-</span></div>
+  <div><b>Peers:</b></div>
+  <div id="st-peers" style="font-family:monospace; background:#f7f7f7; padding:10px; border-radius:8px; white-space:pre-wrap;">(lade…)</div>
+  <button type="button" id="btn-refresh-status" style="margin-top:10px;">Status aktualisieren</button>
+</div>
+
+
     <div class="footer-note">Powered by Ebner Stephan</div>
     <div class="license-info">
       <p>Dieses Projekt steht unter der <a href="https://github.com/stephanflug/digitales-Flugbuch/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">MIT-Lizenz</a>.</p>
@@ -255,6 +333,50 @@ sudo tee "$HTML_PATH" > /dev/null << 'EOF'
       .then(r => { if (!r.ok) throw new Error(r.status + ' ' + r.statusText); return r.text(); })
       .then(cfg => ta.value = cfg)
       .catch(err => { console.error('Konfig nicht geladen:', err); ta.value = '# Fehler: ' + err; });
+
+ // === WireGuard-Status laden/rendern ===
+  function humanBytes(n){ n=Number(n||0); const u=['B','KiB','MiB','GiB','TiB']; let i=0; while(n>=1024&&i<u.length-1){n/=1024;i++;} return n.toFixed(1)+' '+u[i]; }
+  function humanAgo(s){ s=Number(s||0); if(s<0) return 'nie'; if(s<60) return s+'s'; if(s<3600) return Math.floor(s/60)+'m'; if(s<86400) return Math.floor(s/3600)+'h'; return Math.floor(s/86400)+'d'; }
+
+  function renderStatus(d){
+    document.getElementById('st-iface').textContent = d.iface || '-';
+    document.getElementById('st-state').textContent = d.state || '-';
+    document.getElementById('st-v4').textContent = (d.addresses_v4||[]).join(', ') || '-';
+    document.getElementById('st-v6').textContent = (d.addresses_v6||[]).join(', ') || '-';
+
+    const box = document.getElementById('st-peers');
+    if (!d.ok) { box.textContent = 'Fehler: ' + (d.error||'unbekannt'); return; }
+    if (!d.peers || d.peers.length === 0) { box.textContent = '(keine Peers)'; return; }
+
+    const lines = d.peers.map(p => {
+      return [
+        `Peer:        ${p.public_key}`,
+        `Endpoint:    ${p.endpoint}`,
+        `Allowed IPs: ${p.allowed_ips}`,
+        `Handshake:   ${humanAgo(p.latest_handshake_ago)}`,
+        `Traffic:     RX ${humanBytes(p.transfer_rx)} | TX ${humanBytes(p.transfer_tx)}`,
+        `Keepalive:   ${p.persistent_keepalive}`,
+        ''
+      ].join('\n');
+    });
+    box.textContent = lines.join('\n');
+  }
+
+  async function loadStatus(){
+    try{
+      const r = await fetch('/cgi-bin/wireguard_status.sh?ts=' + Date.now());
+      if(!r.ok) throw new Error(r.status + ' ' + r.statusText);
+      renderStatus(await r.json());
+    }catch(e){
+      console.error('Status-Fehler:', e);
+      renderStatus({ok:false, error:String(e), iface:'wg0'});
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('btn-refresh-status').addEventListener('click', loadStatus);
+    loadStatus();
+    setInterval(loadStatus, 5000); // alle 5s aktualisieren
   });
 </script>
 
