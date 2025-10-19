@@ -112,9 +112,35 @@ sudo chmod +x "$CGI_SCRIPT"
 GET_CONF="/usr/lib/cgi-bin/get_wg_conf.sh"
 sudo tee "$GET_CONF" > /dev/null << 'EOF'
 #!/bin/bash
-echo "Content-type: text/plain"
+
+#EBST geändert am 19.10.2025
+
+# CGI-Skript zum Auslesen der aktuellen WireGuard-Konfiguration
+
+WG_CONF="/opt/digitalflugbuch/data/DatenBuch/wg0.conf"
+
+# --- HTTP Header ---
+echo "Content-Type: text/plain; charset=utf-8"
+echo "Cache-Control: no-cache, no-store, must-revalidate"
+echo "Pragma: no-cache"
+echo "Expires: 0"
 echo ""
-cat /opt/digitalflugbuch/data/DatenBuch/wg0.conf
+
+# --- Datei prüfen ---
+if [ ! -f "$WG_CONF" ]; then
+  echo "# FEHLER: $WG_CONF existiert nicht."
+  exit 0
+fi
+
+if [ ! -r "$WG_CONF" ]; then
+  echo "# FEHLER: Keine Leserechte für $WG_CONF (Benutzer: $(whoami))"
+  exit 0
+fi
+
+# --- Inhalt ausgeben ---
+cat "$WG_CONF"
+exit 0
+
 EOF
 sudo chmod +x "$GET_CONF"
 
