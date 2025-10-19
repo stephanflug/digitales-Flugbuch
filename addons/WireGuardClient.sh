@@ -249,13 +249,15 @@ sudo tee "$HTML_PATH" > /dev/null << 'EOF'
   </div>
 
   <script>
-    window.addEventListener('DOMContentLoaded', () => {
-      fetch('/cgi-bin/get_wg_conf.sh')
-        .then(r => r.ok ? r.text() : Promise.reject(r.statusText))
-        .then(cfg => document.querySelector('textarea[name="config"]').value = cfg)
-        .catch(err => console.error('Konfig nicht geladen:', err));
-    });
-  </script>
+  window.addEventListener('DOMContentLoaded', () => {
+    const ta = document.querySelector('textarea[name="config"]');
+    fetch('/cgi-bin/get_wg_conf.sh?ts=' + Date.now())
+      .then(r => { if (!r.ok) throw new Error(r.status + ' ' + r.statusText); return r.text(); })
+      .then(cfg => ta.value = cfg)
+      .catch(err => { console.error('Konfig nicht geladen:', err); ta.value = '# Fehler: ' + err; });
+  });
+</script>
+
 </body>
 </html>
 EOF
