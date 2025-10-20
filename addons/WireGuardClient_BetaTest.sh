@@ -1,3 +1,5 @@
+#EBST Stand 20.10.2025
+
 #!/bin/bash
 
 LOGFILE="/var/log/wireguard_setup.log"
@@ -29,7 +31,7 @@ if [ ! -f "$CONF_PATH" ]; then
   sudo chmod 666 "$CONF_PATH"
 fi
 
-# 3. CGI-Skript: control (UNVERÄNDERT)
+# 3. CGI-Skript: control
 CGI_SCRIPT="/usr/lib/cgi-bin/wireguard_control.sh"
 sudo tee "$CGI_SCRIPT" > /dev/null << 'EOF'
 #!/bin/bash
@@ -108,7 +110,7 @@ esac
 EOF
 sudo chmod +x "$CGI_SCRIPT"
 
-# 4. CGI-Skript: get current config (UNVERÄNDERT)
+# 4. CGI-Skript: get current config
 GET_CONF="/usr/lib/cgi-bin/get_wg_conf.sh"
 sudo tee "$GET_CONF" > /dev/null << 'EOF'
 #!/bin/bash
@@ -139,7 +141,7 @@ exit 0
 EOF
 sudo chmod +x "$GET_CONF"
 
-# 4b. NEU: CGI-Skript – Minimal-Status (IPv4 / verbunden / RX/TX)
+# 4b.CGI-Skript – Minimal-Status (IPv4 / verbunden / RX/TX)
 STATUS_CGI="/usr/lib/cgi-bin/wireguard_status.sh"
 sudo tee "$STATUS_CGI" > /dev/null << 'EOF'
 #!/bin/bash
@@ -202,7 +204,7 @@ printf '}\n'
 EOF
 sudo chmod 755 "$STATUS_CGI"
 
-# 5. HTML-Datei – erweitert um Status & Hintergrund 'flyer.png'
+# 5. HTML-Datei
 HTML_PATH="/var/www/html/wireguard.html"
 sudo tee "$HTML_PATH" > /dev/null << 'EOF'
 <!DOCTYPE html>
@@ -369,7 +371,7 @@ sudo tee "$HTML_PATH" > /dev/null << 'EOF'
 </html>
 EOF
 
-# 6. Sudoers-Regeln (ERWEITERT um /usr/bin/wg, Rest unverändert)
+# 6. Sudoers-Regeln (ERWEITERT um /usr/bin/wg, Rest )
 SUDO_LINE1="www-data ALL=(ALL) NOPASSWD: /usr/bin/wg-quick"
 SUDO_LINE2="www-data ALL=(ALL) NOPASSWD: /bin/systemctl"
 SUDO_LINE3="www-data ALL=(ALL) NOPASSWD: /usr/bin/wg"
@@ -384,7 +386,7 @@ if ! sudo grep -qF "$SUDO_LINE3" /etc/sudoers; then
   echo "$SUDO_LINE3" | sudo tee -a /etc/sudoers > /dev/null
 fi
 
-# 7. Button auf index.html hinzufügen (UNVERÄNDERT)
+# 7. Button auf index.html hinzufügen
 INDEX_HTML="/var/www/html/index.html"
 LINK='<button type="button" onclick="window.location.href='\''wireguard.html'\''">WireGuard</button>'
 if [ -f "$INDEX_HTML" ] && ! grep -q "wireguard.html" "$INDEX_HTML"; then
@@ -394,7 +396,7 @@ if [ -f "$INDEX_HTML" ] && ! grep -q "wireguard.html" "$INDEX_HTML"; then
   }" "$INDEX_HTML"
 fi
 
-# 8. systemd-Service für Autostart (UNVERÄNDERT)
+# 8. systemd-Service für Autostart
 SERVICE_FILE="/etc/systemd/system/wg-custom.service"
 if [ ! -f "$SERVICE_FILE" ]; then
   echo "data: Erstelle systemd-Service für WireGuard Autostart..."
