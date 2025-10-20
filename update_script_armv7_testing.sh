@@ -1,7 +1,7 @@
 #!/bin/bash
 
 LOGFILE1="/var/log/digitalflugbuch_update_testing.log"
-LOGFILE2="/var/www/html/log/digitalflugbuch_update_testing.log"
+LOGFILE2="/var/www/html/log/digitalflugbuch_update.log"
 
 # Log-Verzeichnisse anlegen
 mkdir -p "$(dirname "$LOGFILE2")"
