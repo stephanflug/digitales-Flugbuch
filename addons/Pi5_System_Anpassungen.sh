@@ -1,6 +1,8 @@
 #!/bin/bash
+# Datei: /usr/local/bin/pi5_zero_image_migrate.sh
 
-LOGFILE="/var/log/PI4SystemAnpassung.log"
+
+LOGFILE="/var/log/PI5ZeroMigrate.log"
 exec > >(tee -a "$LOGFILE")
 exec 2>&1
 
@@ -9,71 +11,111 @@ echo "Cache-Control: no-cache"
 echo "Connection: keep-alive"
 echo ""
 
-exec 2>&1
+set -euo pipefail
 set -x
 
 SCRIPT_PATH="$(realpath "$0")"
+say() { echo "data: $*"; echo ""; }
 
-# --- Hardwareprüfung ---
-MODEL=$(tr -d '\0' </proc/device-tree/model 2>/dev/null | head -n 1)
+# --- Aufräumfunktion bei Fehler ---
+cleanup() {
+  rc=$?
+  if [ $rc -ne 0 ]; then
+    say "Fehlercode $rc – Details siehe Log: $LOGFILE"
+    say "Script wird entfernt (Fehlerfall)."
+    rm -f "$SCRIPT_PATH" || true
+  fi
+}
+trap cleanup EXIT
 
-if ! echo "$MODEL" | grep -q "Raspberry Pi 4"; then
-  echo "data: Keine Pi-4-Hardware erkannt (gefunden: '$MODEL')."
-  echo "data: Dieses Add-on wird nur auf einem Raspberry Pi 4 ausgeführt."
-  echo "data: Script wird nun entfernt..."
-  rm -f "$SCRIPT_PATH"
+# --- Hardwareprüfung: Nur Raspberry Pi 5 ---
+MODEL="$(tr -d '\0' </proc/device-tree/model 2>/dev/null | head -n 1 || true)"
+if ! echo "${MODEL:-unbekannt}" | grep -q "Raspberry Pi 5"; then
+  say "Keine Pi-5-Hardware erkannt (gefunden: '${MODEL:-unbekannt}'). Breche ab und entferne Skript."
   exit 1
 fi
-# -------------------------
+say "Raspberry Pi 5 erkannt – starte automatische Zero-Image-Migration..."
 
-echo "data: Raspberry Pi 4 erkannt – führe Systemanpassung durch..."
-echo "data: Starte Einrichtung der Netzwerkpriorität (WLAN bevorzugt)..."
-echo ""
+# --- Paketverwaltung vorbereiten ---
+export DEBIAN_FRONTEND=noninteractive
+APT_FLAGS="-o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold"
 
-CONF_FILE="/etc/dhcpcd.conf"
-BACKUP_FILE="/etc/dhcpcd.conf.bak_$(date +%Y%m%d-%H%M%S)"
-
-# Backup erstellen
-if [ -f "$CONF_FILE" ]; then
-  echo "data: Erstelle Backup von $CONF_FILE -> $BACKUP_FILE"
-  if ! sudo cp "$CONF_FILE" "$BACKUP_FILE"; then
-    echo "data: Fehler beim Erstellen des Backups – Script wird gelöscht..."
-    rm -f "$SCRIPT_PATH"
-    exit 1
-  fi
+# --- 1) Prüfen und ggf. auf Bookworm umstellen ---
+OS_CODENAME="$(. /etc/os-release && echo "${VERSION_CODENAME:-}")"
+if [ "${OS_CODENAME:-}" != "bookworm" ]; then
+  say "Passe APT-Quellen auf 'bookworm' an..."
+  for f in /etc/apt/sources.list /etc/apt/sources.list.d/*.list; do
+    [ -f "$f" ] && sudo sed -i 's/\<bullseye\>/bookworm/g;s/\<oldstable\>/bookworm/g' "$f"
+  done
+else
+  say "APT-Quellen bereits auf 'bookworm'."
 fi
 
-# Einträge hinzufügen (idempotent)
-if ! grep -q "metric 100" "$CONF_FILE"; then
-  echo "data: Trage WLAN/LAN Priorität in dhcpcd.conf ein..."
-  if ! sudo tee -a "$CONF_FILE" > /dev/null <<'EOF'
+say "Aktualisiere Paketlisten..."
+sudo apt update
 
-# WLAN bevorzugen, aber LAN als Fallback
-interface wlan0
-    metric 100
+# --- 2) Kernel, Bootloader, Firmware ---
+say "Installiere oder aktualisiere Kernel, Bootloader und Firmware..."
+sudo apt install -y $APT_FLAGS raspberrypi-kernel raspberrypi-bootloader rpi-eeprom linux-firmware ca-certificates curl || true
 
-interface eth0
-    metric 300
-EOF
-  then
-    echo "data: Fehler beim Schreiben der Konfiguration – Script wird gelöscht..."
-    rm -f "$SCRIPT_PATH"
-    exit 1
+# --- 3) EEPROM aktualisieren ---
+if command -v rpi-eeprom-update >/dev/null 2>&1; then
+  say "Aktualisiere EEPROM-Firmware..."
+  sudo rpi-eeprom-update -a || true
+else
+  say "rpi-eeprom-update nicht verfügbar (wird ggf. nachinstalliert)."
+fi
+
+# --- 4) Grafiktreiber auf KMS setzen ---
+CFG=""
+if [ -f /boot/firmware/config.txt ]; then
+  CFG="/boot/firmware/config.txt"
+elif [ -f /boot/config.txt ]; then
+  CFG="/boot/config.txt"
+fi
+
+if [ -n "$CFG" ]; then
+  say "Prüfe und aktualisiere dtoverlay-Eintrag in $CFG..."
+  sudo sed -i 's/^\s*dtoverlay\s*=\s*vc4-fkms-v3d\s*$/dtoverlay=vc4-kms-v3d/g' "$CFG"
+  if ! grep -q 'dtoverlay=vc4-kms-v3d' "$CFG"; then
+    echo "" | sudo tee -a "$CFG" >/dev/null
+    echo "# Pi 5 Grafiktreiber (KMS)" | sudo tee -a "$CFG" >/dev/null
+    echo "dtoverlay=vc4-kms-v3d" | sudo tee -a "$CFG" >/dev/null
   fi
 else
-  echo "data: Eintrag bereits vorhanden, überspringe Änderung."
+  say "Keine config.txt gefunden – KMS-Konfiguration konnte nicht gesetzt werden."
 fi
 
-# Dienst neu starten
-echo "data: Starte dhcpcd neu..."
-if ! sudo systemctl restart dhcpcd || ! sudo service dhcpcd restart; then
-  echo "data: Fehler beim Neustart von dhcpcd – Script wird gelöscht..."
-  rm -f "$SCRIPT_PATH"
-  exit 1
+
+
+# --- 6) Initramfs & Modulcache erneuern ---
+say "Erneuere Initramfs und Modul-Cache..."
+if command -v update-initramfs >/dev/null 2>&1; then
+  sudo update-initramfs -u || true
+fi
+sudo depmod -a || true
+
+# --- 7) System-Upgrade ---
+say "Führe apt full-upgrade -y aus – dies kann einige Minuten dauern..."
+sudo apt $APT_FLAGS full-upgrade -y
+
+say "Entferne nicht mehr benötigte Pakete..."
+sudo apt autoremove --purge -y || true
+
+# --- 8) Abschluss ---
+if [ -f /var/run/reboot-required ]; then
+  say "Migration abgeschlossen – Neustart erforderlich, wird jetzt durchgeführt."
+else
+  say "Migration abgeschlossen – Neustart wird durchgeführt, um Änderungen zu aktivieren."
 fi
 
-echo "data: Fertig! WLAN wird jetzt bevorzugt, LAN dient als Fallback."
-echo "data: Prüfe mit: ip route get 8.8.8.8"
+say "Speichere Log unter $LOGFILE"
+sleep 2
 
+# --- 9) Reboot ---
+say "Starte System neu..."
+sudo sync || true
+sleep 1
+sudo reboot
 
 exit 0
