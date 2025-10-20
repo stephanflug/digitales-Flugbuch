@@ -1,6 +1,6 @@
-#EBST Stand 20.10.2025
-
 #!/bin/bash
+
+#EBST Stand 20.10.2025
 
 LOGFILE="/var/log/wireguard_setup.log"
 exec > >(tee -a "$LOGFILE")
