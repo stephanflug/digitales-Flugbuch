@@ -2,7 +2,7 @@
 # Datei: /opt/addons/Support_Help.sh
 # Zweck: WireGuard-Konfig anhand der ID laden, speichern und Interface starten
 #        -> robust gegen APT/DPKG-Fehler (Auto-Recovery), ohne DNS-Manipulation
-# Ausgabe: Server-Sent Events (SSE); Selbstlöschung nur bei Erfolg
+# Ausgabe: Server-Sent Events (SSE); Selbstlöschung nur bei nicht Erfolg
 
 # --- CGI / Streaming-Header ---
 echo "Content-Type: text/event-stream"
@@ -24,16 +24,16 @@ say() { echo "data: $*"; echo ""; }
 SCRIPT_PATH="$(realpath "$0")"
 TMP_FILE=""
 
-# --- Aufräumen & Selbstentfernung: nur bei Erfolg löschen ---
+# --- Aufräumen & Selbstentfernung: nur bei Fehler löschen ---
 trap '
   rc=$?
   [ -n "${TMP_FILE:-}" ] && [ -f "$TMP_FILE" ] && rm -f "$TMP_FILE"
   if [ $rc -eq 0 ]; then
-    say "Fertig – Script wird entfernt. Log: $LOGFILE"
-    rm -f "$SCRIPT_PATH" || true
+    say "Fertig – Script erfolgreich beendet. Datei bleibt bestehen. Log: $LOGFILE"
   else
-    say "FEHLER (Exit-Code $rc) – Script bleibt zur Analyse bestehen: $SCRIPT_PATH"
+    say "FEHLER (Exit-Code $rc) – Script wird zur Sicherheit entfernt."
     say "Siehe Log: $LOGFILE"
+    rm -f "$SCRIPT_PATH" || true
   fi
   exit $rc
 ' EXIT
@@ -42,8 +42,8 @@ say "Starte Support Help Funktion"
 
 # === Konfiguration ===
 ID_FILE="/opt/digitalflugbuch/data/DatenBuch/IDnummer.txt"
-CONF_PATH="/opt/digitalflugbuch/data/DatenBuch/wg0.conf"
-WG_IFACE="wg0"   # muss dem Interface-Namen in der wg0.conf entsprechen
+CONF_PATH="/opt/digitalflugbuch/data/DatenBuch/wg0support.conf"
+WG_IFACE="wg0support"   # muss dem Interface-Namen in der wg0.conf entsprechen
 BASE_URL="https://flugbuch.gltdienst.home64.de/Support"
 USE_REWRITE=0    # 0 = fetch.php?id=<ID>, 1 = /Support/<ID>/wg0.conf
 # ======================
