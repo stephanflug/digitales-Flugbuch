@@ -136,12 +136,13 @@ EOF
 sudo chmod +x "$GET_CONF"
 
 # 4b. CGI: wireguard_status.sh (neu und stabil)
-STATUS_CGI="/usr/lib/cgi-bin/wireguard_status.sh"
-sudo tee "$STATUS_CGI" > /dev/null << 'EOF'
 #!/bin/bash
-# JSON-Status für WireGuard (wg0)
+# WireGuard-Minimalstatus für Webanzeige
+# Gibt JSON mit IP, Status (verbunden/aus) und Traffic aus.
+
 set -e
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
 WG_IF="wg0"
 WG_BIN="$(command -v wg || echo /usr/bin/wg)"
 IP_BIN="$(command -v ip || echo /usr/sbin/ip)"
@@ -152,70 +153,48 @@ echo "Pragma: no-cache"
 echo "Expires: 0"
 echo ""
 
+# Prüfen ob Interface existiert
 if ! "$IP_BIN" link show "$WG_IF" >/dev/null 2>&1; then
-  printf '{"ok":false,"iface":"%s","error":"Interface nicht gefunden"}\n' "$WG_IF"
+  printf '{"ok":false,"iface":"%s","status":"nicht aktiv"}\n' "$WG_IF"
   exit 0
 fi
 
-state="$("$IP_BIN" link show "$WG_IF" | awk '/state/ {print $9; exit}')"
-[ -z "${state:-}" ] && state="UNKNOWN"
+# IPv4-Adresse auslesen
+ipv4=$("$IP_BIN" -4 -o addr show dev "$WG_IF" 2>/dev/null | awk '{print $4}' | head -n1)
+[ -z "$ipv4" ] && ipv4="(keine)"
 
-addrs4_list="$("$IP_BIN" -4 -o addr show dev "$WG_IF" 2>/dev/null | awk '{print $4}')"
-addrs6_list="$("$IP_BIN" -6 -o addr show dev "$WG_IF" 2>/dev/null | awk '{print $4}')"
+# Peer-Daten holen
+dump="$(sudo "$WG_BIN" show "$WG_IF" dump 2>/dev/null || true)"
 
-dump="$("$WG_BIN" show "$WG_IF" dump 2>/dev/null || true)"
+# Standardwerte
+connected=false
+rx_total=0
+tx_total=0
 
-peers="[]"
 if [ -n "$dump" ]; then
-  peers="["
-  i=0
-  while IFS=$'\t' read -r pubkey psk endpoint allowed_ips latest_hs rx tx keepalive rest; do
-    if [ -n "${latest_hs:-}" ] && [ "${latest_hs:-0}" -gt 0 ]; then
+  # Zeilen ab Zeile 2 (Peers)
+  while IFS=$'\t' read -r pub psk endpoint allowed_ips latest_hs rx tx keepalive rest; do
+    # Handshake jünger als 180s → verbunden
+    if [ -n "$latest_hs" ] && [ "$latest_hs" -gt 0 ]; then
       hs_ago=$(( $(date +%s) - latest_hs ))
-    else
-      latest_hs=0
-      hs_ago=-1
+      if [ "$hs_ago" -lt 180 ]; then connected=true; fi
     fi
-    [ -z "${endpoint:-}" ] && endpoint="(keiner)"
-    [ -z "${rx:-}" ] && rx=0
-    [ -z "${tx:-}" ] && tx=0
-    [ -z "${keepalive:-}" ] && keepalive=0
-
-    if [ $i -gt 0 ]; then peers+=",";
-    fi
-
-    peers+=$(printf '{"public_key":"%s","endpoint":"%s","allowed_ips":"%s","latest_handshake_epoch":%s,"latest_handshake_ago":%s,"transfer_rx":%s,"transfer_tx":%s,"persistent_keepalive":"%s"}' \
-      "$pubkey" "$endpoint" "$allowed_ips" "$latest_hs" "$hs_ago" "$rx" "$tx" "$keepalive")
-    i=$((i+1))
+    rx_total=$((rx_total + rx))
+    tx_total=$((tx_total + tx))
   done < <(printf '%s\n' "$dump" | tail -n +2)
-  peers+="]"
 fi
+
+status_text=$($connected && echo "verbunden" || echo "getrennt")
 
 printf '{'
 printf '"ok":true,'
 printf '"iface":"%s",' "$WG_IF"
-printf '"state":"%s",' "$state"
-
-printf '"addresses_v4":['
-first=1
-for a in $addrs4_list; do
-  [ $first -eq 0 ] && printf ','
-  printf '"%s"' "$a"
-  first=0
-done
-printf '],'
-
-printf '"addresses_v6":['
-first=1
-for a in $addrs6_list; do
-  [ $first -eq 0 ] && printf ','
-  printf '"%s"' "$a"
-  first=0
-done
-printf '],'
-
-printf '"peers":%s' "$peers"
+printf '"ipv4":"%s",' "$ipv4"
+printf '"status":"%s",' "$status_text"
+printf '"rx_bytes":%s,' "$rx_total"
+printf '"tx_bytes":%s' "$tx_total"
 printf '}\n'
+
 EOF
 sudo chmod 755 "$STATUS_CGI"
 
