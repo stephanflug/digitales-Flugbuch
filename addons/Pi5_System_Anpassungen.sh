@@ -86,6 +86,62 @@ else
   say "Keine config.txt gefunden – KMS-Konfiguration konnte nicht gesetzt werden."
 fi
 
+# --- 5) Netzwerk-Priorität: LAN vor WLAN ---
+say "Setze Netzwerk-Priorität: LAN vor WLAN..."
+
+if command -v nmcli >/dev/null 2>&1; then
+  say "NetworkManager erkannt – setze route-metric (LAN bevorzugt)..."
+
+  # Aktive Verbindungen den Interfaces zuordnen, sonst alle passenden
+  ETH_CONNS=$(nmcli -t -f NAME,DEVICE connection show --active | awk -F: '$2=="eth0"{print $1}')
+  [ -z "$ETH_CONNS" ] && ETH_CONNS=$(nmcli -t -f NAME,TYPE connection show | awk -F: '$2=="ethernet"{print $1}')
+
+  WLAN_CONNS=$(nmcli -t -f NAME,DEVICE connection show --active | awk -F: '$2=="wlan0"{print $1}')
+  [ -z "$WLAN_CONNS" ] && WLAN_CONNS=$(nmcli -t -f NAME,TYPE connection show | awk -F: '$2=="wifi"{print $1}')
+
+  for C in $ETH_CONNS; do
+    sudo nmcli connection modify "$C" ipv4.route-metric 100 ipv6.route-metric 100 || true
+  done
+  for C in $WLAN_CONNS; do
+    sudo nmcli connection modify "$C" ipv4.route-metric 300 ipv6.route-metric 300 || true
+  done
+
+  # Verbindungen neu laden/aktivieren (ohne kompletten Reboot)
+  for C in $ETH_CONNS $WLAN_CONNS; do
+    sudo nmcli connection up "$C" || true
+  done
+
+  say "NetworkManager: Prioritäten gesetzt (LAN bevorzugt, WLAN Fallback)."
+
+elif [ -f /etc/dhcpcd.conf ]; then
+  say "dhcpcd erkannt – trage Metriken in /etc/dhcpcd.conf ein..."
+
+  CONF_FILE="/etc/dhcpcd.conf"
+  BACKUP_FILE="/etc/dhcpcd.conf.bak_$(date +%Y%m%d-%H%M%S)"
+  sudo cp "$CONF_FILE" "$BACKUP_FILE" || true
+
+  if ! grep -q "metric 100" "$CONF_FILE"; then
+    sudo tee -a "$CONF_FILE" >/dev/null <<'EOF'
+
+# LAN bevorzugen, WLAN als Fallback (automatisch hinzugefügt)
+interface eth0
+    metric 100
+
+interface wlan0
+    metric 300
+EOF
+  else
+    say "Einträge bereits vorhanden – überspringe Änderung."
+  fi
+
+  if systemctl list-unit-files | grep -q '^dhcpcd\.service'; then
+    sudo systemctl restart dhcpcd || sudo service dhcpcd restart || true
+  fi
+
+  say "dhcpcd: Prioritäten gesetzt (LAN bevorzugt, WLAN Fallback)."
+else
+  say "Weder NetworkManager noch dhcpcd erkannt – überspringe Netzwerk-Priorität."
+fi
 
 
 # --- 6) Initramfs & Modulcache erneuern ---
