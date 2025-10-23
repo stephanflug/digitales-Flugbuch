@@ -1,48 +1,67 @@
-# 📦 Raspberry Pi 4 Gehäuse mit RFID und Display
+# 📦 Raspberry Pi 5 Gehäuse mit digitalem Flugbuch & RFID-Chip
 
-Ein maßgeschneidertes Gehäuse für den Raspberry Pi 4 – mit Halterungen für ein RFID-Modul, ein Display sowie Belüftung für einen Kühlkörper.
+Ein maßgeschneidertes Gehäuse für den **Raspberry Pi 5** – optimiert für den Einsatz mit dem **digitalen Flugbuch** und integriertem **RFID-Chip**.  
+Optional mit **PG16-Kabeldurchführung** (oben oder unten).
 
-![Gehäuse mit RFID und Display](https://github.com/stephanflug/digitales-Flugbuch/blob/main/3D%20Druckerteile/Version%203%20Deluxe%20mit%20PI4/DigiFlugbuch-Bild1.jpg)
+![Gehäuse mit RFID und Display](https://github.com/stephanflug/digitales-Flugbuch/blob/main/3D%20Druckerteile/Version%204%20Deluxe%20mit%20PI5/Fotos/IMG_7077.JPG)
 
 ---
 
 ## ⚙️ Features
 
-📗 Platz für Raspberry Pi (mit Kühlkörper)  
-📘 Montagemöglichkeiten für RFID-Modul & Display  
-🧊 Kompatibel mit Geekworm-Kühlkörpern  
-🧷 Unterstützung für eingeschmolzene Gewindeeinsätze  
-🖨️ Optimiert für FDM-Druck mit PETG  
+📗 Passend für Raspberry Pi 5  
+📘 Öffnungen für Display und RFID-Modul  
+🔩 PG16-Kabeldurchführung wahlweise oben oder unten  
+🧊 Kompatibel mit Einschmelzmuttern (M2 × 4 mm)  
+🖨️ Optimiert für FDM-Druck mit PETG oder PLA  
 
 ---
 
 ## 🔧 Hinweise zur Montage
 
-### 🕳️ Bohrungen
-- 🔩 **M3** – für RFID-Modul, Display und Gehäusedeckel  
-- 🔩 **M2.5** – zur Befestigung des Raspberry Pi mit Kühlkörper  
-
-### 🧊 Kühlkörper
-Ich verwende diesen Kühlkörper von Geekworm (Amazon):  
-👉 `B09QMBCXLB` auf Amazon
-
-### 🖨️ 3D-Druck
-- Material: **PETG**  
-- Drucker: **Bambu Lab P1S mit AMS**  
-- Layerhöhe: **Empfohlen: 0.2 mm**  
-- Infill: **15–25 %**  
-- Supports: **Nur bei Bedarf**  
-
-Die Schrauben werden direkt ins Material eingedreht (alternativ Gewindeeinsätze verwenden).
+### 🕳️ Bohrungen & Befestigung
+- 🔩 **4 × Schrauben Ø 4–4,5 mm** – zur Gehäusemontage  
+- 🧷 **M2 × 4 mm Einschmelzmuttern** – für Innenbefestigungen  
+- ⚙️ Einschmelzmuttern bei *Deckel 1* **nicht möglich** (durchgehende M2-Schrauben verwenden)
 
 ---
 
-## 🔥 Gewindeeinsätze (eingeschmolzen)
-- 🧷 **M2.5** – für die Befestigung des Raspberry Pi  
-- 🧷 **M3** – zur Verschraubung des Gehäusedeckels  
+### 🧱 Material & Druckparameter
+- **Material:** PETG (Außenmontage) oder PLA (Innenmontage)  
+- **Drucker:** Bambu Lab P1S / X1C mit AMS  
+- **Layerhöhe:** 0,2 mm  
+- **Infill:** 20–30 %  
+- **Supports:** Nur bei Bedarf  
+
+---
+
+## 🧩 STL-Dateien
+
+### 🔖 Logo
+- `Logo.stl`
+
+### 🧱 Gehäuseboden
+- `Gehäuse_PG16_oben.stl`  
+- `Gehäuse_PG16_unten.stl`
+
+### 🧰 Gehäuse 1 – Deckel
+- 📺 **Display-Ausschnitt:** 73,5 mm × 27,5 mm  
+- 🔩 **4 × M2-Schrauben (durchgehend)**  
+- `Deckel_1_mit_Logo.stl`  
+- `Deckel_1_ohne_Logo.stl`
+
+### 🧰 Gehäuse 2 – Deckel
+- 📺 **Display-Ausschnitt:** 71,5 mm × 25,0 mm  
+- `Deckel_2_mit_Logo.stl`  
+- `Deckel_2_ohne_Logo.stl`
+
+### 🧰 Gehäuse 3 – Deckel
+- 📺 **Display-Ausschnitt:** 72,0 mm × 25,8 mm  
+- `Deckel_3_mit_Logo.stl`  
+- `Deckel_3_ohne_Logo.stl`
 
 ---
 
 ## 🧑‍🔬 Autor
 
-Erstellt und getestet von **Christoph Figl** 🛠️ 
+Erstellt und getestet von **Thomas Behmer** 🛠️
