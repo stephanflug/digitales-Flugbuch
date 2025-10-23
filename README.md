@@ -51,8 +51,8 @@ Ab Version 3.5 kann die Altitude-Sensor-Funktion direkt mit dem Flugbuch verwend
 
 - ✅ **Pi Zero W2** – getestet  
 - ✅ **Pi 3B** – getestet  
-- 🔄 **Pi 4** – Testphase  
-- ⏳ **Pi 5** – noch kein Ergebnis
+- 🔄 **Pi 4** – getestet  
+- ⏳ **Pi 5** – Testphase
 
 
 ## ⭐ Möglichkeiten: 
