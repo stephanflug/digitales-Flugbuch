@@ -29,7 +29,7 @@ Neu!!Ein fertiges Flugbuch Basic Images.Einfach herunterladen und auf die SD-Kar
 
 Ab Version 3.5 kann die Altitude-Sensor-Funktion direkt mit dem Flugbuch verwendet werden.Hierfür steht eine Anleitung zur Verfügung, die beschreibt, wie die Integration umgesetzt wird.<a href="https://github.com/stephanflug/digitales-Flugbuch/blob/main/Dokumentation/FlugBuch/RFID%20Flugbuch/Altitude%20Sensor%20beim%20Flugbuch%20einbindenV1.0.pdf
 " target="_blank">Anleitung</a> 
-[AAltitude Sensor Webseite](https://github.com/stephanflug/AltitudeSensor) 
+Altitude Sensor Webseite [Link](https://github.com/stephanflug/AltitudeSensor) 
 
 ##  Externer Zugriff via WireGuard VPN
 
