@@ -1,57 +1,56 @@
-# RFID Chip Scanner – Windows & Android
+# 🔎 RFID Chip Scanner – Windows & Android
 
-## Übersicht
+## 📘 Übersicht
 
-Dieser Ordner enthält zwei schlanke Hilfstools, die ausschließlich dazu dienen, die **UID (Unique ID) von RFID-Chips** auszulesen. Verfügbar sind:
+Dieser Ordner enthält zwei kompakte Hilfstools, die ausschließlich dazu dienen, die **UID (Unique ID) von RFID-Chips** auszulesen:
 
-- ein **Windows-Tool** für USB-RFID-Lesegeräte  
-- eine **Android-App** für Smartphones mit NFC
+- 🖥️ **Windows-Tool** für USB-RFID-Lesegeräte  
+- 📱 **Android-App** für NFC-fähige Smartphones  
 
-Die ausgelesenen UID-Werte können unter anderem im **Digitalen Flugbuch** zur eindeutigen Zuordnung von Nutzerchips hinterlegt werden. Die Tools arbeiten vollständig **autonom** und kommunizieren **nicht** mit dem Flugbuchsystem.
-
----
-
-## Funktionsumfang
-
-- Auslesen der **UID** eines RFID-Chips  
-- Darstellung der UID in einem klar lesbaren Format  
-- Möglichkeit, die UID zu kopieren oder zur späteren Verwendung zu notieren  
-
-> Die Tools sind bewusst einfach gehalten: Fokus auf zuverlässigem, unkompliziertem UID-Auslesen.
+Die ermittelten UID-Werte können unter anderem im **Digitalen Flugbuch** verwendet werden, um Nutzerchips eindeutig zuzuordnen. Die Tools arbeiten **komplett eigenständig** und greifen **nicht** auf das Flugbuchsystem zu.
 
 ---
 
-## Windows-Tool
+## 🎯 Funktionsumfang
+
+- 🔐 Auslesen der **UID** eines RFID-Chips  
+- 👁️ Klare, direkte Anzeige der UID  
+- 📋 Möglichkeit zum Kopieren oder Notieren der UID  
+
+> ℹ️ Beide Tools sind bewusst schlicht gehalten und fokussieren sich auf zuverlässiges, unkompliziertes UID-Auslesen.
+
+---
+
+## 🖥️ Windows-Tool
 
 ### Eigenschaften
-- Kompatibel mit Windows 10 und 11  
-- Funktioniert mit handelsüblichen **USB-RFID-Readern**  
+- ✔️ Unterstützt Windows 10 und 11  
+- ✔️ Funktioniert mit gängigen **USB-RFID-Readern**  
 
 ### Anwendung
-1. USB-RFID-Leser an den PC anschließen  
-2. Windows-Tool starten  
-3. RFID-Chip kurz auf den Leser legen  
-4. UID erscheint sofort im Tool und kann übernommen werden  
+1. 🔌 USB-RFID-Leser anschließen  
+2. ▶️ Windows-Tool starten  
+3. 🪪 RFID-Chip auflegen  
+4. 📄 UID wird sofort angezeigt  
 
 ---
 
-## Android-App
+## 📱 Android-App
 
 ### Eigenschaften
-- Für Android-Smartphones mit aktivierbarem **NFC-Modul**  
-- Liest RFID-Karten und -Chips per integriertem NFC-Sensor aus  
+- ✔️ Für Android-Geräte mit **NFC-Unterstützung**  
+- ✔️ Nutzt den integrierten NFC-Sensor des Smartphones  
 
 ### Anwendung
-1. App installieren  
-2. NFC am Smartphone aktivieren  
-3. App öffnen  
-4. RFID-Chip an die Rückseite des Geräts halten  
-5. UID wird unmittelbar angezeigt  
+1. 📥 App installieren  
+2. 📡 NFC aktivieren  
+3. ▶️ App starten  
+4. 🪪 Chip an die Rückseite des Geräts halten  
+5. 📄 UID erscheint direkt auf dem Display  
 
 ---
 
-## Softwareentwicklung
+## 👨‍💻 Softwareentwicklung
 
-**🧑‍🔬 Entwickelt von:**  
+**Entwickelt von:**  
 **Thomas Behmer**
-
