@@ -52,4 +52,4 @@ Die ermittelten UID-Werte können unter anderem im **Digitalen Flugbuch** verwen
 
 ## 👨‍💻 Softwareentwicklung
 
-**Entwickelt von:Thomas Behmer**
+**Entwickelt von: Thomas Behmer**
