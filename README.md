@@ -23,30 +23,46 @@ oder auch auf dieser Seite [Flugbuch](https://flugbuch.gltdienst.home64.de))
 - ⌨️ Falls der Benutzer nicht in der Benutzerdatei existiert, wird eine Fehlermeldung ausgegeben.
 
 ## ⭐ NEU!
-Neu!!Ein fertiges Flugbuch Basic Images.Einfach herunterladen und auf die SD-Karte speichern. Achte dabei unbedingt auf die Installationsanleitung!
-<a href="https://github.com/stephanflug/digitales-Flugbuch/blob/main/Installation/Flugbuch%20Images/Anleitung_Flugbuch_Images.pdf
-" target="_blank">Anleitung</a>
 
-Ab Version 3.5 kann die Altitude-Sensor-Funktion direkt mit dem Flugbuch verwendet werden.Hierfür steht eine Anleitung zur Verfügung, die beschreibt, wie die Integration umgesetzt wird.<a href="https://github.com/stephanflug/digitales-Flugbuch/blob/main/Dokumentation/FlugBuch/RFID%20Flugbuch/Altitude%20Sensor%20beim%20Flugbuch%20einbindenV1.0.pdf
-" target="_blank">Anleitung</a> 
-Altitude Sensor Webseite [Link](https://github.com/stephanflug/AltitudeSensor) 
+### 🔎 RFID Chip Scanner (Windows & Android)
 
-##  Externer Zugriff via WireGuard VPN
+Zusätzlich zum Flugbuch stehen einfache Hilfstools zum Auslesen der UID von RFID-/NFC-Chips zur Verfügung:
 
-- Die Funktion erfordert die Installation eines zusätzlichen Addons für WireGuard VPN.
-- Nach der Installation geben Sie Ihre eigene WireGuard VPN-Server-Konfiguration ein.
-- Alternativ können Sie den kostenlosen Dienst von [ipv64.net](https://ipv64.net) verwenden.
-- Im Fehlerfall können Sie dem Support Ihre VPN-Konfiguration bereitstellen, sodass dieser direkt auf das Flugbuch zugreifen und Sie gezielt unterstützen kann.
+- 🖥️ Windows-Tool für USB-RFID-Lesegeräte  
+- 📱 Android-App für NFC-fähige Smartphones  
 
-### So funktioniert's:
+Die Tools lesen ausschließlich die UID des Chips aus, zeigen sie direkt an und arbeiten vollständig eigenständig.  
+Die UID kann im Flugbuch zur eindeutigen Zuordnung von Nutzerchips verwendet werden.
 
-1. Addon für WireGuard VPN installieren.
-2. Eigene WireGuard-Konfiguration eingeben (oder vpn64.de nutzen).
-3. Verbindung aufbauen und das Flugbuch wie gewohnt verwalten.
+👉 [Zum RFID Chip Scanner](./Tool%20Software/RFID%20Chip%20Scanner/README.md)
 
 ---
 
-> **Hinweis:** Mit WireGuard VPN wird der Zugriff auf das Flugbuch so sicher und komfortabel wie ein lokaler Zugriff im Verein.
+Neu!! Ein fertiges Flugbuch Basic Image. Einfach herunterladen und auf die SD-Karte speichern.  
+Achten Sie unbedingt auf die Installationsanleitung!  
+<a href="https://github.com/stephanflug/digitales-Flugbuch/blob/main/Installation/Flugbuch%20Images/Anleitung_Flugbuch_Images.pdf" target="_blank">Anleitung</a>
+
+Ab Version 3.5 steht die Altitude-Sensor-Funktion zur Verfügung.  
+<a href="https://github.com/stephanflug/digitales-Flugbuch/blob/main/Dokumentation/FlugBuch/RFID%20Flugbuch/Altitude%20Sensor%20beim%20Flugbuch%20einbindenV1.0.pdf" target="_blank">Anleitung</a>  
+Altitude Sensor Webseite: [Link](https://github.com/stephanflug/AltitudeSensor)
+
+---
+
+## Externer Zugriff via WireGuard VPN
+
+- Installation eines WireGuard-VPN-Addons erforderlich  
+- Eingabe der eigenen WireGuard-Konfiguration  
+- Alternativ nutzbar: kostenloser Dienst von [ipv64.net](https://ipv64.net)  
+- Supportzugriff mit Bereitstellung der VPN-Konfiguration möglich
+
+### So funktioniert’s:
+1. Addon für WireGuard installieren  
+2. Eigene Konfiguration eingeben (oder vpn64.de nutzen)  
+3. Verbindung aufbauen und wie gewohnt nutzen  
+
+> **Hinweis:** Mit WireGuard VPN wird der Zugriff so sicher wie im lokalen Vereinsnetz.
+
+---
 
 ### 🧪 Aktuelle getestete Geräte
 
