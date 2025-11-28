@@ -77,9 +77,16 @@
       "beschreibung": "Dieses Add-on muss zwingend installiert werden, wenn ein Raspberry Pi 5 verwendet wird.Es passt das Basic-Image an die Betriebsumgebung des Pi 5 an und aktiviert bzw. ändert Funktionen, die auf dem Pi Zero 2 W noch nicht vorhanden waren.",
       "version": "1.0",
       "autor": "Ebner Stephan"
+    },
+    {
+      "datei": "Flugbuch_Cloud.sh",
+      "beschreibung": "Mit diesem Add-on wird eine gesicherte Verbindung zum Flugbuch-Cloud-Server hergestellt. Dadurch kann über einen eindeutigen URL und einen geschützten Zugangspunkt direkt auf die Flugbuch-Software und den Host zugegriffen werden. Für die Nutzung des Dienstes ist eine vorherige Anmeldung unter steuerung@gmx.net erforderlich.",
+      "version": "1.0",
+      "autor": "Ebner Stephan"
     }
   ]
 }
+
 
 
 
