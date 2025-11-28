@@ -1,5 +1,5 @@
 #!/bin/bash
-# Datei: /opt/addons/Support_Help.sh
+# Datei: /opt/addons/Flugbuch_Cloud.sh.sh
 # Zweck: WireGuard-Konfig anhand der ID laden, speichern und Interface starten
 #        -> robust gegen APT/DPKG-Fehler (Auto-Recovery), ohne DNS-Manipulation
 # Ausgabe: Server-Sent Events (SSE); Selbstlöschung nur bei nicht Erfolg
@@ -11,7 +11,7 @@ echo "Connection: keep-alive"
 echo ""
 
 # --- Logging ---
-LOGFILE="/var/log/support_help.log"
+LOGFILE="/var/log/flugbuchcloud.log"
 mkdir -p "$(dirname "$LOGFILE")" 2>/dev/null || true
 exec > >(tee -a "$LOGFILE")
 exec 2>&1
@@ -39,12 +39,12 @@ trap '
 ' EXIT
 
 
-say "Starte Support Help Funktion"
+say "Starte Flugbuch Cloud Funktion"
 
 # === Konfiguration ===
 ID_FILE="/opt/digitalflugbuch/data/DatenBuch/IDnummer.txt"
-CONF_PATH="/opt/digitalflugbuch/data/DatenBuch/wg0support.conf"
-WG_IFACE="wg0support"   # muss zum Dateinamen passen
+CONF_PATH="/opt/digitalflugbuch/data/DatenBuch/flugbuchcloud.conf"
+WG_IFACE="flugbuchcloud"   # muss zum Dateinamen passen
 BASE_URL="https://flugbuch.gltdienst.home64.de/Support"
 USE_REWRITE=0           # 0 = fetch.php?id=<ID>, 1 = /Support/<ID>/wg0.conf
 CURL_OPTS=(-4 -A "curl" -m 20 --retry 3 --retry-delay 1 -fsSL)
@@ -268,7 +268,24 @@ fi
 # Rechte zurück auf 666 (für Web-UI; sicherer wäre 600 + gezielte ACL/Sudo-Regel)
 sudo chmod 666 "${CONF_PATH}"
 
-# 7) Status ausgeben
+# 7) Systemd-Autostart einrichten (für Verbindung nach Neustart)
+if command -v systemctl >/dev/null 2>&1; then
+  say "Richte systemd-Autostart für ${WG_IFACE} ein..."
+  sudo mkdir -p /etc/wireguard
+  sudo cp "${CONF_PATH}" "/etc/wireguard/${WG_IFACE}.conf"
+  sudo chown root:root "/etc/wireguard/${WG_IFACE}.conf"
+  sudo chmod 600 "/etc/wireguard/${WG_IFACE}.conf"
+
+  if sudo systemctl enable "wg-quick@${WG_IFACE}.service"; then
+    say "systemd-Service wg-quick@${WG_IFACE}.service für Autostart aktiviert."
+  else
+    say "Hinweis: Konnte wg-quick@${WG_IFACE}.service nicht aktivieren. Prüfen Sie sudo-Rechte / Journal."
+  fi
+else
+  say "systemd nicht verfügbar – Autostart über systemd nicht möglich."
+fi
+
+# 8) Status ausgeben
 WG_STATUS="$(sudo wg show "${WG_IFACE}" 2>&1 || true)"
 say "WireGuard-Status (${WG_IFACE}):"
 echo "data: --- STATUS BEGIN ---"
@@ -278,7 +295,7 @@ echo ""
 echo "data: --- STATUS END ---"
 echo ""
 
-# 8) Endpoint-Erreichbarkeit (DNS/UDP) prüfen und Feedback geben
+# 9) Endpoint-Erreichbarkeit (DNS/UDP) prüfen und Feedback geben
 ENDPOINT="$(extract_endpoint)"
 if [ -n "$ENDPOINT" ]; then
   say "Prüfe Endpoint-Erreichbarkeit: ${ENDPOINT}"
@@ -287,4 +304,5 @@ else
   say "Hinweis: Kein Endpoint in der Konfiguration gefunden (Server-seitige Konfig prüfen)."
 fi
 
-say "Fertig! Support-Verbindung erfolgreich hergestellt."
+say "Fertig! Flugbuch Cloud Verbindung erfolgreich hergestellt."
+
