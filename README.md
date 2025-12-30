@@ -76,7 +76,8 @@ Ab Version **3.5** steht die **Altitude-Sensor-Funktion** zur Verfügung.
 - ⏳ **Pi 5** – getestet
 
 
-## ⭐ Möglichkeiten: 
+## ⭐ Möglichkeiten:
+    -Keinen Cloudzwang
     -Flugbuch-Auswertung direkt auf dem Gerät
     -Möglichkeit, das gesamte Flugbuch zu löschen
     -Flugbuch Einträge bearbeiten
