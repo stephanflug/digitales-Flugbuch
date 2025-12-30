@@ -65,19 +65,6 @@ Ab Version **3.5** steht die **Altitude-Sensor-Funktion** zur Verfügung.
 👉 [Anleitung (PDF)](https://github.com/stephanflug/digitales-Flugbuch/blob/main/Dokumentation/FlugBuch/RFID%20Flugbuch/Altitude%20Sensor%20beim%20Flugbuch%20einbindenV1.0.pdf)  
 👉 Altitude Sensor Projekt: https://github.com/stephanflug/AltitudeSensor
 
-## Externer Zugriff via WireGuard VPN
-
-- Installation eines WireGuard-VPN-Addons erforderlich  
-- Eingabe der eigenen WireGuard-Konfiguration  
-- Alternativ nutzbar: kostenloser Dienst von [ipv64.net](https://ipv64.net)  
-- Supportzugriff mit Bereitstellung der VPN-Konfiguration möglich
-
-### So funktioniert’s:
-1. Addon für WireGuard installieren  
-2. Eigene Konfiguration eingeben (oder vpn64.de nutzen)  
-3. Verbindung aufbauen und wie gewohnt nutzen  
-
-> **Hinweis:** Mit WireGuard VPN wird der Zugriff so sicher wie im lokalen Vereinsnetz.
 
 ---
 
@@ -104,9 +91,10 @@ Ab Version **3.5** steht die **Altitude-Sensor-Funktion** zur Verfügung.
     -Kann auch ohne Internet betrieben werden(Nur wenn eine RTC Batterie verbaut wurde)
     -Backup und Restore
     -Viewer Dashboard für eine externen Anzeige via Browser
-    -Zusätzliche ist es ab der V3.0 möglich via Rest-API Schnitstelle die Flugbuchdaten zu übermitteln
+    -Rest-API Schnitstelle die Flugbuchdaten zu übermitteln
     -Ab der 3.5 Version ist es jetzt möglich einen Altitude Sensor zu verwenden.
     -Bossserver Funktionen.Eine externe Betriebsaufzeichnung auf dem Vereinsserver.
+    -VPN Zugang direkt zum Gerät via Flugbuch Cloud Server oder Verein eigenen Server
     
 <p align="center">
   <img src="https://github.com/stephanflug/digitales-Flugbuch/blob/main/Bilder/TopologieFlugbuch.png?raw=true" alt="Logo" width="700" height="700"/>
