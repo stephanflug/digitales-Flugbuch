@@ -24,6 +24,16 @@ oder auch auf dieser Seite [Flugbuch](https://flugbuch.gltdienst.home64.de))
 
 ## ⭐ NEU!
 
+### 🖥️ Flugbuch Cloud Server Panel (Windows) – ab Version 3.9.0
+
+Mit Version **v3.9.0** steht ein neues **Flugbuch Cloud Server Panel für Windows** zur Verfügung.  
+Das Panel läuft lokal auf einem Windows-Rechner (z. B. im Vereinsheim) und verbindet sich automatisch mit dem Vereinsflugbuch in der Flugbuch Cloud. Der volle Funktionsumfang des Flugbuchs steht direkt zur Verfügung.
+
+👉 Release-Details:  
+https://github.com/stephanflug/digitales-Flugbuch/releases/tag/
+
+---
+
 ### 🔎 RFID Chip Scanner (Windows & Android)
 
 Zusätzlich zum Flugbuch stehen einfache Hilfstools zum Auslesen der UID von RFID-/NFC-Chips zur Verfügung:
@@ -38,15 +48,22 @@ Die UID kann im Flugbuch zur eindeutigen Zuordnung von Nutzerchips verwendet wer
 
 ---
 
-Neu!! Ein fertiges Flugbuch Basic Image. Einfach herunterladen und auf die SD-Karte speichern.  
-Achten Sie unbedingt auf die Installationsanleitung!  
-<a href="https://github.com/stephanflug/digitales-Flugbuch/blob/main/Installation/Flugbuch%20Images/Anleitung_Flugbuch_Images.pdf" target="_blank">Anleitung</a>
+### 💾 Flugbuch Basic Image
 
-Ab Version 3.5 steht die Altitude-Sensor-Funktion zur Verfügung.  
-<a href="https://github.com/stephanflug/digitales-Flugbuch/blob/main/Dokumentation/FlugBuch/RFID%20Flugbuch/Altitude%20Sensor%20beim%20Flugbuch%20einbindenV1.0.pdf" target="_blank">Anleitung</a>  
-Altitude Sensor Webseite: [Link](https://github.com/stephanflug/AltitudeSensor)
+Ein fertiges **Flugbuch Basic Image** steht zum Download bereit.  
+Einfach herunterladen und auf die SD-Karte speichern.  
+**Bitte unbedingt die Installationsanleitung beachten.**
+
+👉 [Installationsanleitung (PDF)](https://github.com/stephanflug/digitales-Flugbuch/blob/main/Installation/Flugbuch%20Images/Anleitung_Flugbuch_Images.pdf)
 
 ---
+
+### 📈 Altitude Sensor (ab Version 3.5)
+
+Ab Version **3.5** steht die **Altitude-Sensor-Funktion** zur Verfügung.
+
+👉 [Anleitung (PDF)](https://github.com/stephanflug/digitales-Flugbuch/blob/main/Dokumentation/FlugBuch/RFID%20Flugbuch/Altitude%20Sensor%20beim%20Flugbuch%20einbindenV1.0.pdf)  
+👉 Altitude Sensor Projekt: https://github.com/stephanflug/AltitudeSensor
 
 ## Externer Zugriff via WireGuard VPN
 
