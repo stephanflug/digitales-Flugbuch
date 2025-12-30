@@ -30,7 +30,7 @@ Mit Version **v3.9.0** steht ein neues **Flugbuch Cloud Server Panel für Window
 Das Panel läuft lokal auf einem Windows-Rechner (z. B. im Vereinsheim) und verbindet sich automatisch mit dem Vereinsflugbuch in der Flugbuch Cloud. Der volle Funktionsumfang des Flugbuchs steht direkt zur Verfügung.
 
 👉 Release-Details:  
-https://github.com/stephanflug/digitales-Flugbuch/releases/tag/
+https://github.com/stephanflug/digitales-Flugbuch/releases
 
 ---
 
