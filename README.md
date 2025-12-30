@@ -54,7 +54,7 @@ Ein fertiges **Flugbuch Basic Image** steht zum Download bereit.
 Einfach herunterladen und auf die SD-Karte speichern.  
 **Bitte unbedingt die Installationsanleitung beachten.**
 
-👉 [Installationsanleitung (PDF)](https://github.com/stephanflug/digitales-Flugbuch/blob/main/Installation/Flugbuch%20Images/Anleitung_Flugbuch_Images.pdf)
+👉 [Installationsanleitung (PDF)](https://github.com/stephanflug/digitales-Flugbuch/tree/main/Dokumentation/Installation/Flugbuch%20Images)
 👉 [Flugbuch Basic Image herunterladen](https://github.com/stephanflug/digitales-Flugbuch/releases)
 ---
 
