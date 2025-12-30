@@ -55,7 +55,7 @@ Einfach herunterladen und auf die SD-Karte speichern.
 **Bitte unbedingt die Installationsanleitung beachten.**
 
 👉 [Installationsanleitung (PDF)](https://github.com/stephanflug/digitales-Flugbuch/blob/main/Installation/Flugbuch%20Images/Anleitung_Flugbuch_Images.pdf)
-
+👉 [Flugbuch Basic Image herunterladen](https://github.com/stephanflug/digitales-Flugbuch/releases)
 ---
 
 ### 📈 Altitude Sensor (ab Version 3.5)
