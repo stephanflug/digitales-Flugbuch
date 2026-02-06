@@ -1,6 +1,9 @@
 #!/bin/bash
 # safeBoot.sh
-# Installer (CGI/SSE-friendly) for the Safe-Boot Self-Healing system (v2.0).
+# Installer (CGI/SSE-friendly) for the Safe-Boot Self-Healing system.
+
+SAFEBOOT_INSTALLER_VERSION="2.0.3"
+SAFEBOOT_RAW_URL="https://raw.githubusercontent.com/stephanflug/digitales-Flugbuch/main/addons/safeBoot.sh"
 #
 # Usage (as root):
 #   bash safeBoot.sh
@@ -41,6 +44,33 @@ say() {
   echo ""
 }
 
+# --- Self-update (if an older copy is executed) ------------------------------
+# Some addon installers cache /opt/addons/safeBoot.sh. This block refreshes the
+# installer from GitHub raw if a newer version exists, then re-execs itself.
+fetch_cmd=""
+if command -v curl >/dev/null 2>&1; then
+  fetch_cmd="curl -fsSL"
+elif command -v wget >/dev/null 2>&1; then
+  fetch_cmd="wget -qO-"
+fi
+
+if [ -n "$fetch_cmd" ]; then
+  tmp="/tmp/safeBoot.sh.$$"
+  if $fetch_cmd "$SAFEBOOT_RAW_URL" >"$tmp" 2>/dev/null; then
+    new_ver=$(grep -E '^SAFEBOOT_INSTALLER_VERSION=' "$tmp" | head -n1 | cut -d'"' -f2)
+    if [ -n "$new_ver" ] && [ "$new_ver" != "$SAFEBOOT_INSTALLER_VERSION" ]; then
+      say "Update gefunden: $SAFEBOOT_INSTALLER_VERSION -> $new_ver (ersetze Installer und starte neu)"
+      install_path="$0"
+      # If called from /opt/addons/safeBoot.sh keep that path, otherwise just overwrite $0
+      cp -f "$tmp" "$install_path" 2>/dev/null || true
+      chmod +x "$install_path" 2>/dev/null || true
+      rm -f "$tmp" 2>/dev/null || true
+      exec bash "$install_path" "$@"
+    fi
+  fi
+  rm -f "$tmp" 2>/dev/null || true
+fi
+
 say "Starte Installation des Safe-Boot-Selbstheilungssystems..."
 
 # --- Preflight: ensure we can write to system paths -------------------------
@@ -67,7 +97,8 @@ rm -f /usr/local/sbin/.safe-boot_write_test 2>/dev/null || true
 say "Erstelle /usr/local/sbin/safe-boot.sh..."
 cat >/usr/local/sbin/safe-boot.sh <<'EOF'
 #!/bin/bash
-# Safe Boot Self-Healing Script (v2.0)
+# Safe Boot Self-Healing Script (v2.0.3)
+SAFEBOOT_RUNNER_VERSION="2.0.3"
 # - Creates a backup manifest when system is healthy
 # - On unhealthy boot, restores critical configs
 # - Adds proactive fixes for common post-power-loss issues:
