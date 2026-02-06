@@ -303,7 +303,13 @@ fi
 
 if [ $mmc_io_errors_detected -eq 1 ]; then
   log "WARN: MMC/SD I/O errors detected. SD card may be failing. Consider replacing SD card."
-  echo "SD I/O errors detected at $(date)" | tee -a "$LOG_FILE" > "$FLAG_FILE"
+
+  # Also persist a clear hint for the Digitales Flugbuch system.
+  SD_FAIL_FILE="/opt/digitalflugbuch/data/system/sdkartenfail.txt"
+  mkdir -p "$(dirname "$SD_FAIL_FILE")" 2>/dev/null || true
+  echo "SD/MMC I/O errors detected at $(date). Empfehlung: SD-Karte tauschen." \
+    | tee -a "$LOG_FILE" > "$FLAG_FILE" \
+    > "$SD_FAIL_FILE" 2>/dev/null || true
 fi
 
 if [ $check_ok -eq 1 ]; then
