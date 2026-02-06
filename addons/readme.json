@@ -45,7 +45,7 @@
     {
       "datei": "safeBoot.sh",
       "beschreibung": "Installiert ein Selbstheilungs-System für Raspberry Pi (alle Modelle, inkl. Zero 2 W): erkennt defekte Boots mit Dienst-Check (dbus/journald/NetworkManager), stellt automatisch gesicherte Standard-Konfigurationen wieder her und startet betroffene Dienste neu. Bei gesundem Boot werden laufende/aktivierte Dienste erkannt und ihre wichtigsten Configs sowie Unit-Overrides versioniert gesichert. Inklusive zRAM-Swap (dphys-swapfile aus), geplantem fsck für die SD-Root-Partition, eigenem Log mit Logrotation (/var/log/safe-boot.log) und Safe-Mode-Flag auf /boot. Zusätzlicher Speicherplatz mit 500MB",
-      "version": "1.0",
+      "version": "2.0",
       "autor": "Ebner Stephan"
     },
     {
@@ -86,6 +86,7 @@
     }
   ]
 }
+
 
 
 
