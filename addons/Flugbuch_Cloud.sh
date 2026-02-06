@@ -1,8 +1,46 @@
 #!/bin/bash
-# Datei: /opt/addons/Flugbuch_Cloud.sh.sh
+# Flugbuch_Cloud.sh
 # Zweck: WireGuard-Konfig anhand der ID laden, speichern und Interface starten
-#        -> robust gegen APT/DPKG-Fehler (Auto-Recovery), ohne DNS-Manipulation
-# Ausgabe: Server-Sent Events (SSE); Selbstlöschung nur bei nicht Erfolg
+# -> robust gegen APT/DPKG-Fehler (Auto-Recovery), ohne DNS-Manipulation
+# Ausgabe: Server-Sent Events (SSE)
+# Selbstlöschung: nur bei Fehler
+
+FLUGBUCH_CLOUD_INSTALLER_VERSION="2.0.1"
+FLUGBUCH_CLOUD_RAW_URL="https://raw.githubusercontent.com/stephanflug/digitales-Flugbuch/main/addons/Flugbuch_Cloud.sh"
+
+# If not running as root, re-exec via sudo (installer may be launched by a web/app user).
+if [ "${EUID:-$(id -u)}" -ne 0 ]; then
+  if command -v sudo >/dev/null 2>&1; then
+    exec sudo -E bash "$0" "$@"
+  fi
+  echo "Content-Type: text/event-stream"; echo "Cache-Control: no-cache"; echo "Connection: keep-alive"; echo ""
+  echo "data: ERROR: Dieses Script muss als root laufen (oder sudo ist erforderlich)."; echo ""
+  exit 1
+fi
+
+# --- Self-update (cached installer refresh) ---
+fetch_cmd=""
+if command -v curl >/dev/null 2>&1; then
+  fetch_cmd="curl -fsSL"
+elif command -v wget >/dev/null 2>&1; then
+  fetch_cmd="wget -qO-"
+fi
+if [ -n "$fetch_cmd" ]; then
+  tmp="/tmp/Flugbuch_Cloud.sh.$$"
+  if $fetch_cmd "$FLUGBUCH_CLOUD_RAW_URL" >"$tmp" 2>/dev/null; then
+    new_ver=$(grep -E '^FLUGBUCH_CLOUD_INSTALLER_VERSION=' "$tmp" | head -n1 | cut -d'"' -f2)
+    if [ -n "$new_ver" ] && [ "$new_ver" != "$FLUGBUCH_CLOUD_INSTALLER_VERSION" ]; then
+      echo "Content-Type: text/event-stream"; echo "Cache-Control: no-cache"; echo "Connection: keep-alive"; echo ""
+      echo "data: Update gefunden: $FLUGBUCH_CLOUD_INSTALLER_VERSION -> $new_ver (ersetze Installer und starte neu)"; echo ""
+      install_path="$0"
+      cp -f "$tmp" "$install_path" 2>/dev/null || true
+      chmod +x "$install_path" 2>/dev/null || true
+      rm -f "$tmp" 2>/dev/null || true
+      exec bash "$install_path" "$@"
+    fi
+  fi
+  rm -f "$tmp" 2>/dev/null || true
+fi
 
 # --- CGI / Streaming-Header ---
 echo "Content-Type: text/event-stream"
@@ -13,49 +51,57 @@ echo ""
 # --- Logging ---
 LOGFILE="/var/log/flugbuchcloud.log"
 mkdir -p "$(dirname "$LOGFILE")" 2>/dev/null || true
+# If /var/log is not writable for some reason, fall back to /tmp
+if ! ( : >>"$LOGFILE" ) 2>/dev/null; then
+  LOGFILE="/tmp/flugbuchcloud.log"
+fi
 exec > >(tee -a "$LOGFILE")
 exec 2>&1
 
 set -Eeuo pipefail
 set -x
 
-say() { echo "data: $*"; echo ""; }   # SSE-Zeile
+say() {
+  echo "data: $*"
+  echo ""
+}
 
+# SSE-Zeile
 SCRIPT_PATH="$(realpath "$0")"
 TMP_FILE=""
 
 # --- Aufräumen & Selbstentfernung: nur bei Fehler löschen ---
-trap '
-  rc=$?
+trap ' rc=$?
   [ -n "${TMP_FILE:-}" ] && [ -f "$TMP_FILE" ] && rm -f "$TMP_FILE"
   if [ $rc -eq 0 ]; then
     say "Fertig – Script erfolgreich beendet. Datei bleibt bestehen. Log: $LOGFILE"
   else
     say "FEHLER (Exit-Code $rc) – Script wird zur Sicherheit entfernt."
     say "Siehe Log: $LOGFILE"
-    rm -f "$SCRIPT_PATH" || true
+    sudo rm -f "$SCRIPT_PATH" || true
   fi
   exit $rc
 ' EXIT
-
 
 say "Starte Flugbuch Cloud Funktion"
 
 # === Konfiguration ===
 ID_FILE="/opt/digitalflugbuch/data/DatenBuch/IDnummer.txt"
 CONF_PATH="/opt/digitalflugbuch/data/DatenBuch/flugbuchcloud.conf"
-WG_IFACE="flugbuchcloud"   # muss zum Dateinamen passen
+WG_IFACE="flugbuchcloud"  # muss zum Dateinamen passen
 BASE_URL="https://flugbuch.gltdienst.home64.de/Support"
-USE_REWRITE=0           # 0 = fetch.php?id=<ID>, 1 = /Support/<ID>/wg0.conf
+USE_REWRITE=0  # 0 = fetch.php?id=<ID>, 1 = /Support/<ID>/wg0.conf
 CURL_OPTS=(-4 -A "curl" -m 20 --retry 3 --retry-delay 1 -fsSL)
-# ======================
 
 # ---------- Hilfsfunktionen ----------
-apt_busy() { pgrep -f "apt|apt-get|unattended|dpkg" >/dev/null 2>&1; }
+apt_busy() {
+  pgrep -f "apt|apt-get|unattended|dpkg" >/dev/null 2>&1
+}
 
 wait_for_apt_free() {
   local timeout="${1:-90}"
   local elapsed=0
+
   while apt_busy; do
     say "APT/DPKG läuft noch – warte... ($elapsed/${timeout}s)"
     sleep 2
@@ -65,6 +111,7 @@ wait_for_apt_free() {
       break
     fi
   done
+
   if ! apt_busy; then
     for lock in /var/lib/dpkg/lock-frontend /var/cache/apt/archives/lock; do
       if sudo lsof "$lock" >/dev/null 2>&1; then
@@ -77,22 +124,33 @@ wait_for_apt_free() {
   fi
 }
 
+# Non-interactive dpkg/apt options to avoid conffile prompts.
+DPKG_OPTS=(
+  "-o" "Dpkg::Options::=--force-confdef"
+  "-o" "Dpkg::Options::=--force-confold"
+)
+
 repair_apt() {
   wait_for_apt_free 90
-  say "Repariere DPKG-Konfiguration (dpkg --configure -a)..."
-  sudo DEBIAN_FRONTEND=noninteractive dpkg --configure -a || true
-  say "Repariere evtl. gebrochene Abhängigkeiten (apt-get -f install)..."
-  sudo DEBIAN_FRONTEND=noninteractive apt-get -y -q -f install || true
+
+  # If dpkg is stuck on conffile prompts, force defaults/keep-old.
+  say "Repariere DPKG-Konfiguration (dpkg --configure -a) (non-interactive)..."
+  sudo DEBIAN_FRONTEND=noninteractive dpkg --configure -a --force-confdef --force-confold || true
+
+  say "Repariere evtl. gebrochene Abhängigkeiten (apt-get -f install) (non-interactive)..."
+  sudo DEBIAN_FRONTEND=noninteractive apt-get -y -q "${DPKG_OPTS[@]}" -f install || true
+
   say "Paketlisten aktualisieren (apt-get update)..."
   sudo apt-get update || true
 }
 
 apt_install_retry() {
-  local tries=3 i=1
+  local tries=3
+  local i=1
   while :; do
     wait_for_apt_free 90
     say "Installiere Pakete: $* (Versuch $i/$tries)..."
-    if sudo DEBIAN_FRONTEND=noninteractive apt-get -yq install "$@"; then
+    if sudo DEBIAN_FRONTEND=noninteractive apt-get -yq "${DPKG_OPTS[@]}" install "$@"; then
       return 0
     fi
     say "Installationsversuch $i fehlgeschlagen – starte Reparatur..."
@@ -105,7 +163,8 @@ apt_install_retry() {
   done
 }
 
-curl_status() {  # HTTP laden und Statuscode liefern
+curl_status() {
+  # HTTP laden und Statuscode liefern
   local url="$1" out="$2"
   curl "${CURL_OPTS[@]}" -w "%{http_code}" "$url" -o "$out"
 }
@@ -138,7 +197,7 @@ extract_endpoint() {
 }
 
 udp_probe() {
-  # UDP-„reachability“ rudimentär testen (DNS zuerst prüfen)
+  # UDP-„reachability“ rudimentär testen
   local endpoint="$1"
   local host="${endpoint%:*}"
   local port="${endpoint##*:}"
@@ -146,12 +205,10 @@ udp_probe() {
     say "Kein Endpoint zum Prüfen gefunden."
     return 0
   fi
-  # DNS
   if ! getent hosts "$host" >/dev/null 2>&1; then
     say "WARNUNG: DNS-Auflösung für $host fehlgeschlagen."
     return 1
   fi
-  # UDP: schicke leeres Datagramm; Erfolg sagt wenig, Fehler sind aber aussagekräftig
   if command -v nc >/dev/null 2>&1; then
     if nc -uz -w 2 "$host" "$port"; then
       say "Endpoint $endpoint scheint per UDP erreichbar."
@@ -163,15 +220,12 @@ udp_probe() {
   fi
   return 0
 }
-# ------------------------------------
 
 # 0) APT/DPKG Zustand vorab reparieren (falls nötig)
 repair_apt
 
 # 1) Pakete – IMMER versuchen zu installieren/aktualisieren
 say "Installiere/aktualisiere erforderliche Pakete..."
-# wireguard-tools liefert wg/wg-quick; auf manchen Systemen heißt das Paket so.
-# Fallback: 'wireguard' zieht dkms/kernel ggf. nach (Pi5 hat Kernel-Support out of the box).
 apt_install_retry wireguard wireguard-tools curl ca-certificates
 
 # 1a) Kernel/Tools prüfen
@@ -189,6 +243,7 @@ if [[ ! -f "$ID_FILE" ]]; then
   say "Fehler: ID-Datei nicht gefunden ($ID_FILE)"
   exit 1
 fi
+
 ID="$(awk -F': ' '/^ID: /{print $2}' "$ID_FILE" | tr -d '\r' | xargs)"
 if [[ -z "$ID" ]]; then
   ID="$(head -n1 "$ID_FILE" | tr -d '\r' | xargs)"
@@ -206,7 +261,6 @@ else
   CONF_URL="${BASE_URL}/fetch.php?id=${ID}"
 fi
 say "Hole Konfiguration von: ${CONF_URL}"
-
 TMP_FILE="$(mktemp)"
 
 # 3a) Robuster Download mit Statusausgabe
@@ -233,7 +287,7 @@ sudo chown www-data:www-data "${CONF_PATH}"
 sudo chmod 666 "${CONF_PATH}"
 say "Konfiguration gespeichert unter ${CONF_PATH} (Rechte 666, Eigentümer www-data)."
 
-# 5a) Warnung bei Default-Route in AllowedIPs (Support-Tunnel-typisch unerwünscht)
+# 5a) Warnung bei Default-Route in AllowedIPs
 if grep -Eiq '^[[:space:]]*AllowedIPs[[:space:]]*=[[:space:]]*(.*0\.0\.0\.0/0|::/0)' "$CONF_PATH"; then
   say "WARNUNG: AllowedIPs enthalten Default-Route (0.0.0.0/0 oder ::/0). Für reines Support-VPN besser serverseitig einschränken."
 fi
@@ -252,30 +306,27 @@ fi
 if ! sudo wg-quick up "${CONF_PATH}"; then
   ERR=$?
   say "wg-quick up fehlgeschlagen (Code ${ERR}). Versuche kurze Reparatur..."
-  # Manchmal fehlt nach Updates ein systemd-Reload oder resolv conf ist stale
   sudo systemctl daemon-reload || true
   sleep 2
   if ! sudo wg-quick up "${CONF_PATH}"; then
     ERR=$?
     sudo chmod 666 "${CONF_PATH}"
     say "Fehler: wg-quick up erneut fehlgeschlagen (Code ${ERR})."
-    # Hinweise sammeln
     journalctl -u "wg-quick@${WG_IFACE}" --no-pager -n 50 2>/dev/null | sed 's/^/data: /'
     exit $ERR
   fi
 fi
 
-# Rechte zurück auf 666 (für Web-UI; sicherer wäre 600 + gezielte ACL/Sudo-Regel)
+# Rechte zurück auf 666 (für Web-UI)
 sudo chmod 666 "${CONF_PATH}"
 
-# 7) Systemd-Autostart einrichten (für Verbindung nach Neustart)
+# 7) Systemd-Autostart einrichten
 if command -v systemctl >/dev/null 2>&1; then
   say "Richte systemd-Autostart für ${WG_IFACE} ein..."
   sudo mkdir -p /etc/wireguard
   sudo cp "${CONF_PATH}" "/etc/wireguard/${WG_IFACE}.conf"
   sudo chown root:root "/etc/wireguard/${WG_IFACE}.conf"
   sudo chmod 600 "/etc/wireguard/${WG_IFACE}.conf"
-
   if sudo systemctl enable "wg-quick@${WG_IFACE}.service"; then
     say "systemd-Service wg-quick@${WG_IFACE}.service für Autostart aktiviert."
   else
@@ -288,14 +339,12 @@ fi
 # 8) Status ausgeben
 WG_STATUS="$(sudo wg show "${WG_IFACE}" 2>&1 || true)"
 say "WireGuard-Status (${WG_IFACE}):"
-echo "data: --- STATUS BEGIN ---"
-echo ""
-echo "data: ${WG_STATUS//$'\n'/$'\ndata: '}"
-echo ""
-echo "data: --- STATUS END ---"
-echo ""
+echo "data: --- STATUS BEGIN ---"; echo ""
+# multi-line SSE
+while IFS= read -r ln; do echo "data: $ln"; echo ""; done <<< "$WG_STATUS"
+echo "data: --- STATUS END ---"; echo ""
 
-# 9) Endpoint-Erreichbarkeit (DNS/UDP) prüfen und Feedback geben
+# 9) Endpoint-Erreichbarkeit prüfen
 ENDPOINT="$(extract_endpoint)"
 if [ -n "$ENDPOINT" ]; then
   say "Prüfe Endpoint-Erreichbarkeit: ${ENDPOINT}"
@@ -305,4 +354,3 @@ else
 fi
 
 say "Fertig! Flugbuch Cloud Verbindung erfolgreich hergestellt."
-
