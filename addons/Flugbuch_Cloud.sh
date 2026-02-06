@@ -5,7 +5,7 @@
 # Ausgabe: Server-Sent Events (SSE)
 # Selbstlöschung: nur bei Fehler
 
-FLUGBUCH_CLOUD_INSTALLER_VERSION="2.0.1"
+FLUGBUCH_CLOUD_INSTALLER_VERSION="2.0.2"
 FLUGBUCH_CLOUD_RAW_URL="https://raw.githubusercontent.com/stephanflug/digitales-Flugbuch/main/addons/Flugbuch_Cloud.sh"
 
 # If not running as root, re-exec via sudo (installer may be launched by a web/app user).
@@ -91,7 +91,19 @@ CONF_PATH="/opt/digitalflugbuch/data/DatenBuch/flugbuchcloud.conf"
 WG_IFACE="flugbuchcloud"  # muss zum Dateinamen passen
 BASE_URL="https://flugbuch.gltdienst.home64.de/Support"
 USE_REWRITE=0  # 0 = fetch.php?id=<ID>, 1 = /Support/<ID>/wg0.conf
-CURL_OPTS=(-4 -A "curl" -m 20 --retry 3 --retry-delay 1 -fsSL)
+# Some servers/WAFs block the default curl UA and respond with 404.
+# We use a browser-like UA to avoid false 404s.
+CURL_OPTS=(
+  -4
+  -A "Mozilla/5.0 (X11; Linux aarch64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0 Safari/537.36"
+  -H "Accept: */*"
+  -H "Accept-Language: de,en;q=0.8"
+  --compressed
+  -m 30
+  --retry 3
+  --retry-delay 1
+  -fsSL
+)
 
 # ---------- Hilfsfunktionen ----------
 apt_busy() {
