@@ -1,5 +1,5 @@
 #!/bin/bash
-# Flugbuch_Cloud.sh
+# Flugbuch_Cloud.sh (v2.0.0)
 # Zweck: WireGuard-Konfig anhand der ID laden, speichern und Interface starten
 # -> robust gegen APT/DPKG-Fehler (Auto-Recovery), ohne DNS-Manipulation
 # Ausgabe: Server-Sent Events (SSE)
@@ -254,21 +254,33 @@ if [[ -z "$ID" ]]; then
 fi
 say "Gefundene ID: $ID"
 
-# 3) URL zusammensetzen
+# 3) URL zusammensetzen + Fallback
+# Primär-URL je nach USE_REWRITE, bei HTTP 404 wird automatisch die andere Variante probiert.
 if [[ "$USE_REWRITE" -eq 1 ]]; then
-  CONF_URL="${BASE_URL}/${ID}/wg0.conf"
+  CONF_URL_1="${BASE_URL}/${ID}/wg0.conf"
+  CONF_URL_2="${BASE_URL}/fetch.php?id=${ID}"
 else
-  CONF_URL="${BASE_URL}/fetch.php?id=${ID}"
+  CONF_URL_1="${BASE_URL}/fetch.php?id=${ID}"
+  CONF_URL_2="${BASE_URL}/${ID}/wg0.conf"
 fi
-say "Hole Konfiguration von: ${CONF_URL}"
-TMP_FILE="$(mktemp)"
 
-# 3a) Robuster Download mit Statusausgabe
-HTTP_STATUS="$(curl_status "${CONF_URL}" "${TMP_FILE}" || true)"
+say "Hole Konfiguration (1): ${CONF_URL_1}"
+TMP_FILE="$(mktemp)"
+HTTP_STATUS="$(curl_status "${CONF_URL_1}" "${TMP_FILE}" || true)"
+
+if [[ "$HTTP_STATUS" == "404" ]]; then
+  say "Hinweis: URL (1) liefert 404 – probiere Alternative (2): ${CONF_URL_2}"
+  HTTP_STATUS="$(curl_status "${CONF_URL_2}" "${TMP_FILE}" || true)"
+fi
+
 if [[ "$HTTP_STATUS" != "200" ]]; then
   rm -f "${TMP_FILE}"
   say "Fehler: Download fehlgeschlagen (HTTP ${HTTP_STATUS})."
-  say "Hinweis: Prüfe DNS/Internet oder Erreichbarkeit des Servers."
+  say "Hinweis: Prüfe Server-URL/ID oder ob fetch.php aktiv ist."
+  # Persist hint for UI
+  FAIL_FILE="/opt/digitalflugbuch/data/system/flugbuchcloud_fail.txt"
+  sudo mkdir -p "$(dirname "$FAIL_FILE")" 2>/dev/null || true
+  echo "WG config download failed (HTTP ${HTTP_STATUS}) at $(date). ID=${ID}" | sudo tee "$FAIL_FILE" >/dev/null 2>&1 || true
   exit 1
 fi
 
