@@ -81,11 +81,12 @@
     {
       "datei": "Flugbuch_Cloud.sh",
       "beschreibung": "Mit diesem Add-on wird eine gesicherte Verbindung zum Flugbuch-Cloud-Server hergestellt. Dadurch kann über einen eindeutigen URL und einen geschützten Zugangspunkt direkt auf die Flugbuch-Software und den Host zugegriffen werden. Für die Nutzung des Dienstes ist eine vorherige Anmeldung unter steuerung@gmx.net erforderlich.",
-      "version": "1.0",
+      "version": "2.0",
       "autor": "Ebner Stephan"
     }
   ]
 }
+
 
 
 
