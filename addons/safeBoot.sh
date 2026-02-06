@@ -1,9 +1,16 @@
 #!/bin/bash
-# safeBoot.sh (v2.0.1)
-# Installer (CGI/SSE-friendly) for the Safe-Boot Self-Healing system.
+# safeBoot.sh
+# Installer (CGI/SSE-friendly) for the Safe-Boot Self-Healing system (v2.0).
 #
-# This file is placed at repo-root /addons/safeBoot.sh so it can be fetched via:
-# https://raw.githubusercontent.com/stephanflug/digitales-Flugbuch/main/addons/safeBoot.sh
+# Usage (as root):
+#   bash safeBoot.sh
+#
+# Notes:
+# - Emits Server-Sent-Events headers + progress lines (works behind lighttpd/nginx CGI).
+# - Installs:
+#   - /usr/local/sbin/safe-boot.sh   (self-heal runner)
+#   - /etc/systemd/system/safe-boot.service
+#   - /etc/logrotate.d/safe-boot
 
 set -euo pipefail
 
@@ -60,7 +67,13 @@ rm -f /usr/local/sbin/.safe-boot_write_test 2>/dev/null || true
 say "Erstelle /usr/local/sbin/safe-boot.sh..."
 cat >/usr/local/sbin/safe-boot.sh <<'EOF'
 #!/bin/bash
-# Safe Boot Self-Healing Script (v2.0.1)
+# Safe Boot Self-Healing Script (v2.0)
+# - Creates a backup manifest when system is healthy
+# - On unhealthy boot, restores critical configs
+# - Adds proactive fixes for common post-power-loss issues:
+#   - rebuild module dependency indexes (depmod)
+#   - ensure cfg80211 + WiFi drivers can load (Raspberry Pi onboard WiFi uses brcmfmac)
+#   - restart hostapd if enabled and WiFi AP mode is expected
 
 set -euo pipefail
 
@@ -89,6 +102,7 @@ log() {
 
 have() { command -v "$1" >/dev/null 2>&1; }
 
+# ---- Dienstlisten -----------------------------------------------------------
 running_services() {
   run systemctl list-units --type=service --state=running --no-legend 2>/dev/null \
     | awk '{print $1}' | sed 's/\.service$//' | sort -u
@@ -99,6 +113,7 @@ enabled_services() {
     | awk '{print $1}' | sed 's/\.service$//' | sort -u
 }
 
+# ---- Whitelist für Konfigpfade je Dienst -----------------------------------
 service_paths() {
   local s="$1"
   case "$s" in
@@ -167,12 +182,18 @@ restart_from_manifest() {
   done
 }
 
+# ---- Proactive fix: rebuild module dependency indexes ----------------------
+# Rationale: after hard power loss, /lib/modules/*/modules.dep* can go missing.
+# Symptom: hostapd/iw fail with "nl80211 not found" / "generic netlink not found"
+# because modprobe cannot resolve cfg80211/brcmfmac.
 fix_modules_if_needed() {
   local k="$(uname -r)"
   local modroot="/lib/modules/$k"
 
+  # Only attempt on systems that have /lib/modules for this kernel.
   [ -d "$modroot" ] || return 0
 
+  # If modules.dep is missing, or cfg80211 exists but cannot be modprobed, run depmod.
   local need_depmod=0
   if [ ! -e "$modroot/modules.dep" ] && [ ! -e "$modroot/modules.dep.bin" ]; then
     need_depmod=1
@@ -180,6 +201,7 @@ fix_modules_if_needed() {
 
   if [ $need_depmod -eq 0 ] && have modprobe; then
     if [ -e "$modroot/kernel/net/wireless/cfg80211.ko" ] || [ -e "$modroot/kernel/net/wireless/cfg80211.ko.xz" ] || [ -e "$modroot/kernel/net/wireless/cfg80211.ko.zst" ]; then
+      # Try a quiet modprobe check; if it fails with "not found", likely depmod needed.
       if ! modprobe -q cfg80211 2>/dev/null; then
         need_depmod=1
       fi
@@ -187,29 +209,34 @@ fix_modules_if_needed() {
   fi
 
   if [ $need_depmod -eq 1 ] && have depmod; then
-    log "Module index seems missing/broken -> running depmod -a"
+    log "Module index seems missing/broken → running depmod -a"
     run depmod -a || log "WARN: depmod failed"
   fi
 
+  # Ensure WLAN modules are loaded if present
   if have modprobe; then
     run modprobe -q cfg80211 2>/dev/null || true
     run modprobe -q brcmfmac 2>/dev/null || true
   fi
 }
 
+# ---- Proactive fix: restore hostapd if it is enabled -----------------------
 fix_hostapd_if_enabled() {
+  # only if hostapd unit exists
   run systemctl list-unit-files --type=service --no-pager --plain | grep -q '^hostapd\.service' || return 0
 
   if run systemctl is-enabled -q hostapd 2>/dev/null; then
+    # if ieee80211 exists, WiFi stack is present
     if [ -d /sys/class/ieee80211 ]; then
-      log "hostapd enabled -> restarting"
+      log "hostapd enabled → restarting"
       run systemctl restart hostapd || true
     else
-      log "hostapd enabled but /sys/class/ieee80211 missing -> WiFi stack not ready"
+      log "hostapd enabled but /sys/class/ieee80211 missing → WiFi stack not ready"
     fi
   fi
 }
 
+# ---- Gesundheitscheck mit Retry -------------------------------------------
 check_ok=0
 for attempt in 1 2 3; do
   FAILED=0
@@ -222,9 +249,13 @@ for attempt in 1 2 3; do
   sleep 3
 done
 
+# Always try proactive fixes (they are safe even when the system is "healthy").
 fix_modules_if_needed
 fix_hostapd_if_enabled
 
+# ---- Detect SD/MMC I/O errors (hint SD replacement) ------------------------
+# Look for common kernel messages indicating SD card problems.
+# Works across Raspberry Pi models (mmc0/mmc1, mmcblk0/mmcblk1).
 mmc_io_errors_detected=0
 mmc_re='(mmc[0-9]+:|mmcblk[0-9]+:).*(error|timeout|crc|i/o)'
 if have journalctl; then
@@ -232,6 +263,7 @@ if have journalctl; then
     mmc_io_errors_detected=1
   fi
 fi
+# Fallback: dmesg if journalctl kernel view not available
 if [ $mmc_io_errors_detected -eq 0 ] && have dmesg; then
   if dmesg 2>/dev/null | tail -n 500 | grep -Eqi "$mmc_re"; then
     mmc_io_errors_detected=1
@@ -244,7 +276,8 @@ if [ $mmc_io_errors_detected -eq 1 ]; then
 fi
 
 if [ $check_ok -eq 1 ]; then
-  log "System healthy -> creating full backup & manifest."
+  # ---------------- GESUND: BACKUP & MANIFEST -------------------------------
+  log "System gesund → erstelle vollständiges Backup & Manifest."
 
   rm -rf "$BACKUP_DIR"
   mkdir -p "$SERV_DIR" "$BACKUP_DIR/etc"
@@ -277,9 +310,10 @@ if [ $check_ok -eq 1 ]; then
   done
 
   rm -f "$FLAG_FILE"
-  log "Backup done. Manifest: $MANIFEST"
+  log "Backup abgeschlossen. Manifest: $MANIFEST"
 else
-  log "System unhealthy -> restoring from backup."
+  # ---------------- DEFEKT: RESTORE ----------------------------------------
+  log "System defekt erkannt → Wiederherstellung aus Backup."
 
   while IFS= read -r line; do
     case "$line" in
@@ -306,8 +340,8 @@ else
 
   restart_from_manifest
 
-  echo "SAFE MODE ACTIVE at $(date)" | tee -a "$LOG_FILE" > "$FLAG_FILE"
-  log "Restore done. Details: $LOG_FILE | Flag: $FLAG_FILE"
+  echo "SAFE MODE AKTIV am $(date)" | tee -a "$LOG_FILE" > "$FLAG_FILE"
+  log "Wiederherstellung abgeschlossen. Details: $LOG_FILE | Flag: $FLAG_FILE"
 fi
 EOF
 
@@ -345,8 +379,9 @@ cat >/etc/logrotate.d/safe-boot <<'EOF'
 EOF
 
 say "Aktiviere safe-boot.service..."
-run systemctl daemon-reload
-run systemctl enable safe-boot.service
+# Installer runs as root here; do not use the runner's `run()` helper.
+systemctl daemon-reload
+systemctl enable safe-boot.service
 
 say "Installation abgeschlossen."
 say "Backup-Pfad: /opt/safe-boot/backup | Manifest: /opt/safe-boot/backup/manifest.txt"
