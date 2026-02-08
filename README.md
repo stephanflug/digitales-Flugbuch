@@ -96,6 +96,7 @@ Ab Version **3.5** steht die **Altitude-Sensor-Funktion** zur Verfügung.
     -Ab der 3.5 Version ist es jetzt möglich einen Altitude Sensor zu verwenden.
     -Bossserver Funktionen.Eine externe Betriebsaufzeichnung auf dem Vereinsserver.
     -VPN Zugang direkt zum Gerät via Flugbuch Cloud Server oder Verein eigenen Server
+    -Integration in Areoclub Flugbuch Online
     
 <p align="center">
   <img src="https://github.com/stephanflug/digitales-Flugbuch/blob/main/Bilder/TopologieFlugbuch.png?raw=true" alt="Logo" width="700" height="700"/>
