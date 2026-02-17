@@ -308,14 +308,14 @@ sudo tee "$HTML" > /dev/null <<'EOF'
 <div class="container">
   <h1>Kiosk-Modus (Pi5)</h1>
   <form id="kioskForm">
-    <label for="url">URL für den Kiosk-Browser (z.B. http://localhost:1880/viewerAT):</label><br>
+    <label for="url">URL f&uuml;r den Kiosk-Browser (z.B. http://localhost:1880/viewerAT):</label><br>
     <input type="text" id="url" name="url" value="http://localhost:1880/viewerAT" /><br>
     <button type="submit">Kiosk-URL setzen</button>
   </form>
-  <pre id="log">Status: Noch keine Aktion durchgeführt.</pre>
+  <pre id="log">Status: Noch keine Aktion durchgef&uuml;hrt&period;</pre>
   <button onclick="kioskLog();return false;" style="margin-top:18px;">Log anzeigen</button>
   <div id="kioskLog" class="logblock"></div>
-  <a href="index.html" class="back-to-home">Zurück zur Startseite</a>
+  <a href="index.html" class="back-to-home">Zur&uuml;ck zur Startseite</a>
   <div class="footer-note">Powered by Ebner Stephan</div>
   <div class="license-info">
     <p>Dieses Projekt steht unter der <a href="https://github.com/stephanflug/digitales-Flugbuch/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">MIT-Lizenz</a>.</p>
