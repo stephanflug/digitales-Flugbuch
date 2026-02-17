@@ -5,11 +5,11 @@ USERNAME="flugbuch"
 USER_HOME="/home/$USERNAME"
 SELF_PATH="$(readlink -f "$0" 2>/dev/null || echo "$0")"
 
-# === 0) Nur Raspberry Pi 5 erlauben ===
+# === 0) Nur Raspberry Pi 3 oder 4 erlauben ===
 MODEL="$(tr -d '\0' < /proc/device-tree/model 2>/dev/null || true)"
-if [[ -z "$MODEL" ]] || [[ "$MODEL" != *"Raspberry Pi 5"* ]]; then
+if [[ -z "$MODEL" ]] || { [[ "$MODEL" != *"Raspberry Pi 3"* ]] && [[ "$MODEL" != *"Raspberry Pi 4"* ]]; }; then
   echo "-----------------------------------------------------------------"
-  echo "Abbruch: Dieses Kiosk-Setup ist NUR für Raspberry Pi 5 erlaubt."
+  echo "Abbruch: Dieses Kiosk-Setup ist NUR für Raspberry Pi 3/4 erlaubt."
   echo "Gefundenes Modell: ${MODEL:-unbekannt}"
   echo "Script wird gelöscht."
   echo "-----------------------------------------------------------------"
@@ -17,7 +17,7 @@ if [[ -z "$MODEL" ]] || [[ "$MODEL" != *"Raspberry Pi 5"* ]]; then
   exit 1
 fi
 
-echo "OK: Raspberry Pi 5 erkannt: $MODEL"
+echo "OK: Raspberry Pi 3/4 erkannt: $MODEL"
 
 # 1) Pakete installieren
 sudo apt update
@@ -30,7 +30,7 @@ if ! command -v chromium-browser >/dev/null 2>&1 && ! command -v chromium >/dev/
   sudo apt install -y chromium-browser || sudo apt install -y chromium
 fi
 
-# 1b) HDMI robust für Pi5 (1080p60)
+# 1b) HDMI robust (1080p60)
 CFG="/boot/firmware/config.txt"
 if [ -f "$CFG" ]; then
   sudo cp "$CFG" "$CFG.bak.$(date +%Y%m%d_%H%M%S)"
@@ -148,8 +148,8 @@ echo "data: Starte Kiosk-Setup..."
 echo ""
 
 MODEL="$(tr -d '\0' < /proc/device-tree/model 2>/dev/null || true)"
-if [[ -z "$MODEL" ]] || [[ "$MODEL" != *"Raspberry Pi 5"* ]]; then
-  echo "data: Abbruch: Nur Raspberry Pi 5 unterstützt."
+if [[ -z "$MODEL" ]] || { [[ "$MODEL" != *"Raspberry Pi 3"* ]] && [[ "$MODEL" != *"Raspberry Pi 4"* ]]; }; then
+  echo "data: Abbruch: Nur Raspberry Pi 3/4 unterstützt."
   echo "data: Gefunden: ${MODEL:-unbekannt}"
   exit 0
 fi
@@ -190,10 +190,10 @@ sudo tee "$HTML" > /dev/null <<'EOF'
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Kiosk-Modus Setup (Pi5)</title>
+  <title>Kiosk-Modus Setup (Pi3/Pi4)</title>
 </head>
 <body style="font-family:Arial;max-width:900px;margin:20px auto;">
-  <h1>Kiosk-Modus (nur Raspberry Pi 5)</h1>
+  <h1>Kiosk-Modus (nur Raspberry Pi 3/4)</h1>
   <form id="kioskForm">
     <label>URL:</label><br>
     <input type="text" id="url" value="http://localhost:1880/viewerAT" style="width:80%" />
@@ -240,10 +240,19 @@ fi
 INDEX_HTML="/var/www/html/index.html"
 LINK='<button type="button" onclick="window.location.href='\''set_kiosk_url.html'\''">Kiosk-Modus</button>'
 if [ -f "$INDEX_HTML" ] && ! sudo grep -q "set_kiosk_url.html" "$INDEX_HTML"; then
-  sudo sed -i "/<div class=\"button-container\">/,/<\/div>/ { /<\/div>/ i \\        $LINK }" "$INDEX_HTML"
+  TMP_FILE="$(mktemp)"
+  awk -v link="$LINK" '
+    /<div class="button-container">/ { in_block=1 }
+    in_block && /<\/div>/ && !inserted {
+      print "        " link
+      inserted=1
+    }
+    { print }
+  ' "$INDEX_HTML" > "$TMP_FILE"
+  sudo mv "$TMP_FILE" "$INDEX_HTML"
 fi
 
 echo ""
-echo "Fertig! Pi5-Kiosk-Setup wurde installiert."
+echo "Fertig! Pi3/Pi4-Kiosk-Setup wurde installiert."
 echo "Monitor an HDMI0 (Port nahe USB-C), dann Neustart."
 echo "Öffne im Browser: http://<IP>/set_kiosk_url.html"
