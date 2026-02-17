@@ -83,9 +83,16 @@
       "beschreibung": "Mit diesem Add-on wird eine gesicherte Verbindung zum Flugbuch-Cloud-Server hergestellt. Dadurch kann über einen eindeutigen URL und einen geschützten Zugangspunkt direkt auf die Flugbuch-Software und den Host zugegriffen werden. Für die Nutzung des Dienstes ist eine vorherige Anmeldung unter steuerung@gmx.net erforderlich.",
       "version": "2.0",
       "autor": "Ebner Stephan"
+    },
+    {
+      "datei": "FlugbuchViewer_PI5.sh",
+      "beschreibung": "Richtet einen Kiosk-Modus für den Flugbuch-Viewer auf Raspberry Pi 5 ein(nicht für Zero/Zero W2 oder Pi3-Pi4). Automatischer Start des Browsers im Vollbild, Web-UI zur bequemen Änderung der Kiosk-URL, Watchdog für Neustart bei Fehlern. Der interne HDMI-Anschluss kann für einen externen Bildschirm genutzt werden, um die aktuell angemeldeten Piloten anzuzeigen.",
+      "version": "1.0",
+      "autor": "Ebner Stephan"
     }
   ]
 }
+
 
 
 
