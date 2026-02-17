@@ -30,7 +30,7 @@ if ! command -v chromium-browser >/dev/null 2>&1 && ! command -v chromium >/dev/
   sudo apt install -y chromium-browser || sudo apt install -y chromium
 fi
 
-# 1b) HDMI robust (1080p60)
+# 1b) HDMI robust für Pi5 (1080p60)
 CFG="/boot/firmware/config.txt"
 if [ -f "$CFG" ]; then
   sudo cp "$CFG" "$CFG.bak.$(date +%Y%m%d_%H%M%S)"
@@ -182,7 +182,7 @@ tail -n 200 /var/log/kiosk_browser.log 2>/dev/null || echo "Noch keine Logdatei 
 EOF
 sudo chmod +x "$CGI_LOG"
 
-# 8) HTML Interface
+# 8) HTML-Interface anlegen (mit Log-Funktion, Pi5 Style wie Original)
 HTML="/var/www/html/set_kiosk_url.html"
 sudo tee "$HTML" > /dev/null <<'EOF'
 <!DOCTYPE html>
@@ -190,18 +190,137 @@ sudo tee "$HTML" > /dev/null <<'EOF'
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Kiosk-Modus Setup (Pi5)</title>
+  <title>Kiosk-Modus Setup</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: url('flyer.png') no-repeat center center fixed;
+      background-size: cover;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      box-sizing: border-box;
+    }
+    .container {
+      background-color: #ffffff;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 6px 16px rgba(0,0,0,0.15);
+      width: 100%;
+      max-width: 800px;
+      text-align: center;
+    }
+    h1 {
+      font-size: 30px;
+      color: #333;
+      margin-bottom: 20px;
+    }
+    label, input, button {
+      font-size: 16px;
+      margin: 10px 0;
+    }
+    input[type=text] {
+      width: 80%;
+      padding: 7px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+    }
+    button {
+      background-color: #4CAF50;
+      color: white;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 16px;
+      transition: background-color 0.3s ease, transform 0.3s ease;
+      margin-top: 10px;
+    }
+    button:hover {
+      background-color: #45a049;
+      transform: scale(1.05);
+    }
+    .back-to-home {
+      background-color: #2196F3;
+      color: white;
+      padding: 12px 20px;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-block;
+      margin-top: 20px;
+      transition: background-color 0.3s ease, transform 0.3s ease;
+    }
+    .back-to-home:hover {
+      background-color: #1976D2;
+      transform: scale(1.05);
+    }
+    .footer-note {
+      margin-top: 20px;
+      font-size: 14px;
+      color: #888;
+    }
+    .license-info {
+      margin-top: 30px;
+      font-size: 14px;
+      color: #555;
+      border-top: 1px solid #ddd;
+      padding-top: 15px;
+    }
+    .license-info p {
+      margin: 0;
+    }
+    .license-info a {
+      color: #333;
+      text-decoration: none;
+    }
+    .license-info a:hover {
+      text-decoration: underline;
+    }
+    pre {
+      text-align:left;
+      background:#e8f0fe;
+      padding:10px;
+      border-radius:8px;
+      margin-top:15px;
+      height:120px;
+      overflow:auto;
+    }
+    .warn { color:#c00; font-weight:bold; }
+    .logblock {
+      margin-top:10px;
+      background:#111;
+      color:#fffd;
+      padding:8px;
+      font-size:12px;
+      border-radius:8px;
+      max-height:300px;
+      overflow:auto;
+    }
+  </style>
 </head>
-<body style="font-family:Arial;max-width:900px;margin:20px auto;">
-  <h1>Kiosk-Modus (nur Raspberry Pi 5)</h1>
+<body>
+<div class="container">
+  <h1>Kiosk-Modus (Pi5)</h1>
   <form id="kioskForm">
-    <label>URL:</label><br>
-    <input type="text" id="url" value="http://localhost:1880/viewerAT" style="width:80%" />
+    <label for="url">URL für den Kiosk-Browser (z.B. http://localhost:1880/viewerAT):</label><br>
+    <input type="text" id="url" name="url" value="http://localhost:1880/viewerAT" /><br>
     <button type="submit">Kiosk-URL setzen</button>
   </form>
   <pre id="log">Status: Noch keine Aktion durchgeführt.</pre>
-  <button onclick="kioskLog();return false;">Log anzeigen</button>
-  <pre id="kioskLog"></pre>
+  <button onclick="kioskLog();return false;" style="margin-top:18px;">Log anzeigen</button>
+  <div id="kioskLog" class="logblock"></div>
+  <a href="index.html" class="back-to-home">Zurück zur Startseite</a>
+  <div class="footer-note">Powered by Ebner Stephan</div>
+  <div class="license-info">
+    <p>Dieses Projekt steht unter der <a href="https://github.com/stephanflug/digitales-Flugbuch/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">MIT-Lizenz</a>.</p>
+  </div>
+</div>
 
 <script>
 document.getElementById('kioskForm').onsubmit = function(e) {
@@ -209,6 +328,7 @@ document.getElementById('kioskForm').onsubmit = function(e) {
   let url = document.getElementById('url').value;
   const log = document.getElementById('log');
   log.textContent = 'Kiosk-URL wird gesetzt...\n';
+
   const xhr = new XMLHttpRequest();
   xhr.open('POST', '/cgi-bin/set_kiosk_url.sh', true);
   xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
@@ -220,10 +340,12 @@ document.getElementById('kioskForm').onsubmit = function(e) {
   };
   xhr.send('url=' + encodeURIComponent(url));
 };
+
 function kioskLog() {
-  fetch('/cgi-bin/kiosk_log.sh').then(r => r.text()).then(txt => {
-    document.getElementById('kioskLog').textContent = txt;
-  });
+  fetch('/cgi-bin/kiosk_log.sh')
+    .then(r => r.text())
+    .then(txt => document.getElementById('kioskLog').textContent = txt)
+    .catch(e => document.getElementById('kioskLog').textContent = 'Fehler beim Log-Download: ' + e);
 }
 </script>
 </body>
