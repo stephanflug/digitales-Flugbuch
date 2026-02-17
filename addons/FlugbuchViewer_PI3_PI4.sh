@@ -13,8 +13,8 @@ fi
 if [ "$IS_ZERO" = "1" ]; then
   echo "-----------------------------------------------------------------"
   echo "Achtung: Dieses Kiosk-Setup wird auf Raspberry Pi Zero/Zero 2 NICHT unterstÃ¼tzt!"
-  echo "Der Browser-Kiosk-Modus ist darauf extrem langsam oder lÃ¤uft nicht."
-  echo "Bitte nutze mindestens ein Raspberry Pi 3, 4 oder hÃ¶her."
+  echo "Der Browser-Kiosk-Modus ist darauf extrem langsam oder läuft nicht."
+  echo "Bitte nutze mindestens ein Raspberry Pi 3, 4."
   echo "Setup wird abgebrochen."
   echo "-----------------------------------------------------------------"
   exit 1
@@ -286,18 +286,18 @@ sudo tee "$HTML" > /dev/null <<'EOF'
   <h1>Kiosk-Modus</h1>
   <div id="zeroWarn" class="warn" style="display:none;">
     <b>Dieses Setup funktioniert nicht auf Raspberry Pi Zero / Zero 2!</b><br>
-    Bitte nutze einen Pi 3, 4 oder neuer.
+    Bitte nutze einen Pi 3, 4.
   </div>
   <form id="kioskForm">
-    <label for="url">URL fÃ¼r den Kiosk-Browser (z.B. http://localhost:1880/viewerAT):</label><br>
+    <label for="url">Standart URL lautet (z.B. http://localhost:1880/viewerAT):</label><br>
     <input type="text" id="url" name="url"
       value="http://localhost:1880/viewerAT" /><br>
     <button type="submit">Kiosk-URL setzen</button>
   </form>
-  <pre id="log">Status: Noch keine Aktion durchgefÃ¼hrt.</pre>
+  <pre id="log">Status: Noch keine Aktion durchgef&uuml;hrt.</pre>
   <button onclick="kioskLog();return false;" style="margin-top:18px;">Log anzeigen</button>
   <div id="kioskLog" class="logblock"></div>
-  <a href="index.html" class="back-to-home">ZurÃ¼ck zur Startseite</a>
+  <a href="index.html" class="back-to-home">Zur&uuml;ck zur Startseite</a>
   <div class="footer-note">Powered by Ebner Stephan</div>
   <div class="license-info">
     <p>Dieses Projekt steht unter der <a href="https://github.com/stephanflug/digitales-Flugbuch/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">MIT-Lizenz</a>.</p>
