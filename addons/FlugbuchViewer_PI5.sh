@@ -190,45 +190,41 @@ CGI="/usr/lib/cgi-bin/set_kiosk_url.sh"
 sudo tee "$CGI" > /dev/null <<'EOF'
 #!/bin/bash
 LOGFILE="/var/log/set_kiosk_url.log"
-exec > >(tee -a "$LOGFILE")
-exec 2>&1
-set -x
+exec >>"$LOGFILE" 2>&1
 
 echo "Content-Type: text/event-stream"
 echo "Cache-Control: no-cache"
 echo "Connection: keep-alive"
 echo ""
 
-echo "data: Starte Kiosk-Setup..."
-echo ""
+sse() { echo "data: $*"; echo ""; }
 
+sse "Starte Kiosk-Setup..."
 MODEL="$(tr -d '\0' < /proc/device-tree/model 2>/dev/null || true)"
 if [[ -z "$MODEL" ]] || [[ "$MODEL" != *"Raspberry Pi 5"* ]]; then
-  echo "data: Abbruch: Nur Raspberry Pi 5 unterstützt."
-  echo "data: Gefunden: ${MODEL:-unbekannt}"
-  echo ""
+  sse "Abbruch: Nur Raspberry Pi 5 unterstützt."
+  sse "Gefunden: ${MODEL:-unbekannt}"
   exit 0
 fi
 
 CONFIG="/etc/kiosk_url.conf"
 POSTDATA=$(cat)
 parse_post() {
-  echo "$POSTDATA" | sed -n 's/^url=\(.*\)$/\1/p' | sed 's/%3A/:/g; s/%2F/\//g'
+  raw=$(echo "$POSTDATA" | sed -n 's/^url=\(.*\)$/\1/p')
+  raw=${raw//+/ }
+  printf '%b' "${raw//%/\\x}"
 }
 KIOSK_URL=$(parse_post)
 
 if [ -z "$KIOSK_URL" ]; then
-  echo "data: Fehler: Keine URL übergeben. Bitte im UI AT/DE auswählen oder manuell eintragen."
-  echo ""
+  sse "Fehler: Keine URL übergeben. Bitte im UI AT/DE auswählen oder manuell eintragen."
   exit 0
 fi
 
-echo "data: Setze Kiosk-URL: $KIOSK_URL"
-echo ""
+sse "Setze Kiosk-URL: $KIOSK_URL"
 echo "$KIOSK_URL" | sudo tee "$CONFIG" > /dev/null
 
-echo "data: Kiosk-URL gesetzt. Nach Reboot aktiv."
-echo ""
+sse "Kiosk-URL gesetzt. Nach Reboot aktiv."
 EOF
 sudo chmod +x "$CGI"
 
