@@ -98,7 +98,16 @@ set -euo pipefail
 export DISPLAY=:0
 export HOME="/home/flugbuch"
 export XDG_RUNTIME_DIR="/run/user/1000"
-unset DBUS_SESSION_BUS_ADDRESS || true
+mkdir -p "$XDG_RUNTIME_DIR"
+chmod 700 "$XDG_RUNTIME_DIR" || true
+
+# D-Bus Session-Bus sauber setzen (verhindert "Could not parse server address")
+if [ -S "$XDG_RUNTIME_DIR/bus" ]; then
+  export DBUS_SESSION_BUS_ADDRESS="unix:path=$XDG_RUNTIME_DIR/bus"
+else
+  unset DBUS_SESSION_BUS_ADDRESS || true
+fi
+
 URL="$(cat /etc/kiosk_url.conf)"
 LOGFILE="/var/log/kiosk_browser.log"
 
@@ -113,7 +122,14 @@ fi
 
 while true; do
   echo "[$(date +'%Y-%m-%d %H:%M:%S')] Starte Chromium ($URL)" >> "$LOGFILE"
-  "$BROWSER" --noerrdialogs --disable-infobars --kiosk "$URL" >> "$LOGFILE" 2>&1 &
+  "$BROWSER" \
+    --noerrdialogs \
+    --disable-infobars \
+    --kiosk "$URL" \
+    --ozone-platform=x11 \
+    --password-store=basic \
+    --disable-features=Translate,MediaRouter,DialMediaRouteProvider \
+    >> "$LOGFILE" 2>&1 &
   CHR_PID=$!
 
   while kill -0 $CHR_PID 2>/dev/null; do
