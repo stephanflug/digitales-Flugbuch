@@ -22,7 +22,8 @@ echo "OK: Raspberry Pi 5 erkannt: $MODEL"
 # 1) Pakete installieren
 sudo apt update
 sudo apt install --no-install-recommends -y \
-  xserver-xorg x11-xserver-utils xinit openbox unclutter fbi \
+  xserver-xorg xserver-xorg-core xserver-xorg-video-all xserver-xorg-input-all \
+  x11-xserver-utils xinit openbox unclutter fbi \
   lighttpd curl xserver-xorg-legacy xauth dbus-x11
 
 # Xorg/startx auf Pi5 stabilisieren (tty1 kiosk)
@@ -53,6 +54,9 @@ if [ -f "$CFG" ]; then
   set_cfg "hdmi_mode" "82"
   set_cfg "disable_overscan" "1"
 fi
+
+# 1c) Benutzerrechte für Grafik-/Input-Stack absichern
+sudo usermod -aG video,render,input "$USERNAME" || true
 
 # 2) Autologin tty1
 sudo mkdir -p /etc/systemd/system/getty@tty1.service.d
@@ -135,6 +139,7 @@ BASH_PROFILE="$USER_HOME/.bash_profile"
 sudo tee "$BASH_PROFILE" > /dev/null <<'EOF'
 if [ -z "$SSH_CONNECTION" ] && [ "$(tty)" = "/dev/tty1" ]; then
   if ! pgrep -f kiosk_watchdog.sh >/dev/null; then
+    rm -f /tmp/.X0-lock /tmp/.X11-unix/X0 2>/dev/null || true
     startx /home/flugbuch/.xinitrc -- :0 vt1 -keeptty
   fi
 fi
