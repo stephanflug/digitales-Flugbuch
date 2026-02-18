@@ -499,3 +499,6 @@ echo "data: Fertig! Pi5-Kiosk-Setup wurde installiert."
 echo "data: Monitor an HDMI0 (Port nahe USB-C), dann Neustart."
 echo "data: Öffne im Browser: http://<IP>/set_kiosk_url.html"
 echo ""
+
+exit 0
+
