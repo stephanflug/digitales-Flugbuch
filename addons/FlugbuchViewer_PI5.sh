@@ -207,7 +207,8 @@ echo ""
 echo "$KIOSK_URL" | sudo tee "$CONFIG" > /dev/null
 
 echo "data: Kiosk-URL gesetzt. Nach Reboot aktiv."
-echo ""EOF
+echo ""
+EOF
 sudo chmod +x "$CGI"
 
 # 7) CGI Loganzeige
