@@ -134,7 +134,8 @@ sudo chown $USERNAME:$USERNAME "$WATCHDOG"
 
 sudo touch /var/log/kiosk_browser.log
 sudo chown $USERNAME:$USERNAME /var/log/kiosk_browser.log
-sudo chmod 664 /var/log/kiosk_browser.log
+# auch für CGI (www-data) lesbar machen
+sudo chmod 644 /var/log/kiosk_browser.log
 
 # Rechte auf User-Cache/Config reparieren (wichtig nach früheren Root-Starts)
 sudo mkdir -p "$USER_HOME/.cache" "$USER_HOME/.config" "$USER_HOME/.local/share"
@@ -190,7 +191,10 @@ CGI="/usr/lib/cgi-bin/set_kiosk_url.sh"
 sudo tee "$CGI" > /dev/null <<'EOF'
 #!/bin/bash
 LOGFILE="/var/log/set_kiosk_url.log"
-exec >>"$LOGFILE" 2>&1
+# WICHTIG: Debug darf HTTP-Header nicht verschmutzen (sonst ERR_INVALID_RESP hinter Proxy)
+exec 3>>"$LOGFILE"
+export BASH_XTRACEFD=3
+set -x
 
 echo "Content-Type: text/event-stream"
 echo "Cache-Control: no-cache"
@@ -234,7 +238,12 @@ sudo tee "$CGI_LOG" > /dev/null <<'EOF'
 #!/bin/bash
 echo "Content-type: text/plain"
 echo ""
-tail -n 200 /var/log/kiosk_browser.log 2>/dev/null || echo "Noch keine Logdatei gefunden."
+if [ -r /var/log/kiosk_browser.log ]; then
+  tail -n 200 /var/log/kiosk_browser.log
+else
+  echo "Log nicht lesbar oder nicht vorhanden: /var/log/kiosk_browser.log"
+  ls -l /var/log/kiosk_browser.log 2>/dev/null || true
+fi
 EOF
 sudo chmod +x "$CGI_LOG"
 
