@@ -323,7 +323,14 @@ sudo tee "$HTML" > /dev/null <<'EOF'
 <div class="container">
   <h1>Kiosk-Modus (Pi5)</h1>
   <form id="kioskForm">
-    <label for="url">URL f&uuml;r den Kiosk-Browser (z.B. http://localhost:1880/viewerAT):</label><br>
+    <label for="preset">Sprache ausw&auml;hlen:</label><br>
+    <select id="preset" name="preset" style="width:80%;padding:7px;border-radius:6px;border:1px solid #ccc;">
+      <option value="http://localhost:1880/viewerAT">AT (http://localhost:1880/viewerAT)</option>
+      <option value="http://localhost:1880/viewerDE">DE (http://localhost:1880/viewerDE)</option>
+      <option value="custom">Eigene URL manuell eingeben</option>
+    </select><br>
+
+    <label for="url">URL f&uuml;r den Kiosk-Browser:</label><br>
     <input type="text" id="url" name="url" value="http://localhost:1880/viewerAT" /><br>
     <button type="submit">Kiosk-URL setzen</button>
   </form>
@@ -338,9 +345,18 @@ sudo tee "$HTML" > /dev/null <<'EOF'
 </div>
 
 <script>
+const preset = document.getElementById('preset');
+const urlInput = document.getElementById('url');
+
+preset.addEventListener('change', function () {
+  if (this.value !== 'custom') {
+    urlInput.value = this.value;
+  }
+});
+
 document.getElementById('kioskForm').onsubmit = function(e) {
   e.preventDefault();
-  let url = document.getElementById('url').value;
+  let url = urlInput.value;
   const log = document.getElementById('log');
   log.textContent = 'Kiosk-URL wird gesetzt...\n';
 
