@@ -172,18 +172,18 @@ LOGFILE="/var/log/set_kiosk_url.log"
 exec > >(tee -a "$LOGFILE")
 exec 2>&1
 
-echo "Content-Type: text/event-stream"
+# Hinweis: Wir senden Plain-Text-Streaming über XMLHttpRequest (POST),
+# kein echtes EventSource-SSE.
+echo "Content-Type: text/plain; charset=utf-8"
 echo "Cache-Control: no-cache"
-echo "Connection: keep-alive"
 echo ""
 
-echo "data: Starte Kiosk-Setup..."
-echo ""
+echo "Starte Kiosk-Setup..."
 
 MODEL="$(tr -d '\0' < /proc/device-tree/model 2>/dev/null || true)"
 if [[ -z "$MODEL" ]] || [[ "$MODEL" != *"Raspberry Pi 5"* ]]; then
-  echo "data: Abbruch: Nur Raspberry Pi 5 unterstützt."
-  echo "data: Gefunden: ${MODEL:-unbekannt}"
+  echo "Abbruch: Nur Raspberry Pi 5 unterstützt."
+  echo "Gefunden: ${MODEL:-unbekannt}"
   exit 0
 fi
 
@@ -195,17 +195,14 @@ parse_post() {
 KIOSK_URL=$(parse_post)
 
 if [ -z "$KIOSK_URL" ]; then
-  echo "data: Fehler: Keine URL übergeben. Bitte im UI AT/DE auswählen oder manuell eintragen."
-  echo ""
+  echo "Fehler: Keine URL übergeben. Bitte im UI AT/DE auswählen oder manuell eintragen."
   exit 0
 fi
 
-echo "data: Setze Kiosk-URL: $KIOSK_URL"
-echo ""
+echo "Setze Kiosk-URL: $KIOSK_URL"
 echo "$KIOSK_URL" | sudo tee "$CONFIG" > /dev/null
 
-echo "data: Kiosk-URL gesetzt. Nach Reboot aktiv."
-echo ""
+echo "Kiosk-URL gesetzt. Nach Reboot aktiv."
 EOF
 sudo chmod +x "$CGI"
 
