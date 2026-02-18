@@ -22,14 +22,27 @@ echo "OK: Raspberry Pi 5 erkannt: $MODEL"
 # 1) Pakete installieren
 sudo apt update
 sudo apt install --no-install-recommends -y \
-  xserver-xorg xserver-xorg-core xserver-xorg-video-all xserver-xorg-input-all \
+  xserver-xorg xserver-xorg-core xserver-xorg-input-all \
   x11-xserver-utils xinit openbox unclutter fbi \
   lighttpd curl xserver-xorg-legacy xauth dbus-x11
+
+# Auf Pi5 kein fbdev-Xorg-Treiber (verursacht "framebuffer mode"-Fatal)
+sudo apt purge -y xserver-xorg-video-fbdev || true
 
 # Xorg/startx auf Pi5 stabilisieren (tty1 kiosk)
 sudo tee /etc/X11/Xwrapper.config >/dev/null <<EOF
 allowed_users=anybody
 needs_root_rights=yes
+EOF
+
+# Xorg auf KMS/modesetting für Pi5 festnageln
+sudo mkdir -p /etc/X11/xorg.conf.d
+sudo tee /etc/X11/xorg.conf.d/99-pi5-kms.conf >/dev/null <<EOF
+Section "Device"
+    Identifier "Pi5KMS"
+    Driver "modesetting"
+    Option "kmsdev" "/dev/dri/card0"
+EndSection
 EOF
 
 # Chromium robust installieren (Name variiert)
@@ -146,9 +159,9 @@ fi
 EOF
 sudo chown $USERNAME:$USERNAME "$BASH_PROFILE"
 
-# Default URL falls nicht vorhanden
+# Start-URL Datei anlegen (bewusst leer, muss im UI gesetzt werden)
 if [ ! -f /etc/kiosk_url.conf ]; then
-  echo "http://localhost:1880/viewerAT" | sudo tee /etc/kiosk_url.conf >/dev/null
+  : | sudo tee /etc/kiosk_url.conf >/dev/null
 fi
 
 # 6) CGI set_kiosk_url.sh
@@ -175,13 +188,17 @@ if [[ -z "$MODEL" ]] || [[ "$MODEL" != *"Raspberry Pi 5"* ]]; then
 fi
 
 CONFIG="/etc/kiosk_url.conf"
-URL_DEFAULT="http://localhost:1880/viewerAT"
 POSTDATA=$(cat)
 parse_post() {
   echo "$POSTDATA" | sed -n 's/^url=\(.*\)$/\1/p' | sed 's/%3A/:/g; s/%2F/\//g'
 }
 KIOSK_URL=$(parse_post)
-[ -z "$KIOSK_URL" ] && KIOSK_URL="$URL_DEFAULT"
+
+if [ -z "$KIOSK_URL" ]; then
+  echo "data: Fehler: Keine URL übergeben. Bitte im UI AT/DE auswählen oder manuell eintragen."
+  echo ""
+  exit 0
+fi
 
 echo "data: Setze Kiosk-URL: $KIOSK_URL"
 echo ""
@@ -201,6 +218,10 @@ echo ""
 tail -n 200 /var/log/kiosk_browser.log 2>/dev/null || echo "Noch keine Logdatei gefunden."
 EOF
 sudo chmod +x "$CGI_LOG"
+
+# 7b) CGI in lighttpd aktivieren (sonst liefert /cgi-bin/* nichts)
+sudo lighttpd-enable-mod cgi >/dev/null 2>&1 || true
+sudo systemctl restart lighttpd || true
 
 # 8) HTML-Interface anlegen (mit Log-Funktion, Pi5 Style wie Original)
 HTML="/var/www/html/set_kiosk_url.html"
@@ -327,16 +348,22 @@ sudo tee "$HTML" > /dev/null <<'EOF'
 <body>
 <div class="container">
   <h1>Kiosk-Modus (Pi5)</h1>
+  <div style="text-align:left;background:#f7faff;border:1px solid #d8e6ff;border-radius:10px;padding:12px 14px;margin-bottom:14px;">
+    <b>Hinweis:</b> Beim <b>ersten Start</b> oder nach einem <b>Update</b> muss die Start-URL gesetzt werden.<br>
+    W&auml;hle dazu unten eine Funktion (AT/DE) oder trage eine eigene URL ein.
+  </div>
+
   <form id="kioskForm">
-    <label for="preset">Sprache ausw&auml;hlen:</label><br>
+    <label for="preset">Funktion ausw&auml;hlen:</label><br>
     <select id="preset" name="preset" style="width:80%;padding:7px;border-radius:6px;border:1px solid #ccc;">
+      <option value="">-- Bitte ausw&auml;hlen --</option>
       <option value="http://localhost:1880/viewerAT">AT (http://localhost:1880/viewerAT)</option>
       <option value="http://localhost:1880/viewerDE">DE (http://localhost:1880/viewerDE)</option>
       <option value="custom">Eigene URL manuell eingeben</option>
     </select><br>
 
-    <label for="url">URL f&uuml;r den Kiosk-Browser:</label><br>
-    <input type="text" id="url" name="url" value="http://localhost:1880/viewerAT" /><br>
+    <label for="url">Start-URL f&uuml;r den Kiosk-Browser:</label><br>
+    <input type="text" id="url" name="url" value="" placeholder="z. B. http://localhost:1880/viewerAT" /><br>
     <button type="submit">Kiosk-URL setzen</button>
   </form>
   <pre id="log">Status: Noch keine Aktion durchgef&uuml;hrt&period;</pre>
@@ -354,15 +381,23 @@ const preset = document.getElementById('preset');
 const urlInput = document.getElementById('url');
 
 preset.addEventListener('change', function () {
-  if (this.value !== 'custom') {
-    urlInput.value = this.value;
+  if (this.value === 'custom') {
+    urlInput.focus();
+    return;
   }
+  urlInput.value = this.value || '';
 });
 
 document.getElementById('kioskForm').onsubmit = function(e) {
   e.preventDefault();
-  let url = urlInput.value;
   const log = document.getElementById('log');
+
+  let url = (urlInput.value || '').trim();
+  if (!url) {
+    log.textContent = 'Bitte zuerst eine Funktion auswählen (AT/DE) oder eine URL manuell eintragen.\n';
+    return;
+  }
+
   log.textContent = 'Kiosk-URL wird gesetzt...\n';
 
   const xhr = new XMLHttpRequest();
@@ -378,10 +413,15 @@ document.getElementById('kioskForm').onsubmit = function(e) {
 };
 
 function kioskLog() {
-  fetch('/cgi-bin/kiosk_log.sh')
-    .then(r => r.text())
-    .then(txt => document.getElementById('kioskLog').textContent = txt)
-    .catch(e => document.getElementById('kioskLog').textContent = 'Fehler beim Log-Download: ' + e);
+  const box = document.getElementById('kioskLog');
+  box.textContent = 'Lade Log...';
+  fetch('/cgi-bin/kiosk_log.sh', {cache: 'no-store'})
+    .then(r => {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.text();
+    })
+    .then(txt => box.textContent = txt || 'Log ist leer.')
+    .catch(e => box.textContent = 'Fehler beim Log-Download: ' + e + '\nPrüfe: lighttpd cgi Modul aktiv?');
 }
 </script>
 </body>
