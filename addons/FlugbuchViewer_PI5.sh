@@ -85,8 +85,14 @@ sudo tee "$WATCHDOG" > /dev/null <<'EOF'
 #!/bin/bash
 set -euo pipefail
 export DISPLAY=:0
+export HOME="/home/flugbuch"
+export XDG_RUNTIME_DIR="/run/user/1000"
+unset DBUS_SESSION_BUS_ADDRESS || true
 URL="$(cat /etc/kiosk_url.conf)"
 LOGFILE="/var/log/kiosk_browser.log"
+
+# sicherstellen, dass Cache-Verzeichnisse existieren und beschreibbar sind
+mkdir -p "$HOME/.cache/chromium" "$HOME/.cache/mesa_shader_cache" "$HOME/.config"
 
 BROWSER="$(command -v chromium-browser || command -v chromium || true)"
 if [ -z "$BROWSER" ]; then
@@ -118,6 +124,10 @@ sudo chown $USERNAME:$USERNAME "$WATCHDOG"
 sudo touch /var/log/kiosk_browser.log
 sudo chown $USERNAME:$USERNAME /var/log/kiosk_browser.log
 sudo chmod 664 /var/log/kiosk_browser.log
+
+# Rechte auf User-Cache/Config reparieren (wichtig nach früheren Root-Starts)
+sudo mkdir -p "$USER_HOME/.cache" "$USER_HOME/.config" "$USER_HOME/.local/share"
+sudo chown -R $USERNAME:$USERNAME "$USER_HOME/.cache" "$USER_HOME/.config" "$USER_HOME/.local"
 
 # 4) .xinitrc
 XINITRC="$USER_HOME/.xinitrc"
