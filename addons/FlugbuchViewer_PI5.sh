@@ -23,7 +23,13 @@ echo "OK: Raspberry Pi 5 erkannt: $MODEL"
 sudo apt update
 sudo apt install --no-install-recommends -y \
   xserver-xorg x11-xserver-utils xinit openbox unclutter fbi \
-  lighttpd curl
+  lighttpd curl xserver-xorg-legacy xauth dbus-x11
+
+# Xorg/startx auf Pi5 stabilisieren (tty1 kiosk)
+sudo tee /etc/X11/Xwrapper.config >/dev/null <<EOF
+allowed_users=anybody
+needs_root_rights=yes
+EOF
 
 # Chromium robust installieren (Name variiert)
 if ! command -v chromium-browser >/dev/null 2>&1 && ! command -v chromium >/dev/null 2>&1; then
@@ -115,12 +121,21 @@ EOF
 sudo chmod +x "$XINITRC"
 sudo chown $USERNAME:$USERNAME "$XINITRC"
 
+# 4b) .xserverrc für stabile Xorg-Initialisierung auf tty1
+XSERVER_RC="$USER_HOME/.xserverrc"
+sudo tee "$XSERVER_RC" > /dev/null <<'EOF'
+#!/bin/sh
+exec /usr/lib/xorg/Xorg -nolisten tcp "$@"
+EOF
+sudo chmod +x "$XSERVER_RC"
+sudo chown $USERNAME:$USERNAME "$XSERVER_RC"
+
 # 5) .bash_profile
 BASH_PROFILE="$USER_HOME/.bash_profile"
 sudo tee "$BASH_PROFILE" > /dev/null <<'EOF'
 if [ -z "$SSH_CONNECTION" ] && [ "$(tty)" = "/dev/tty1" ]; then
   if ! pgrep -f kiosk_watchdog.sh >/dev/null; then
-    startx
+    startx /home/flugbuch/.xinitrc -- :0 vt1 -keeptty
   fi
 fi
 EOF
