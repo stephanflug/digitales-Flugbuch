@@ -1,16 +1,10 @@
 #!/bin/bash
 set -euo pipefail
 
-echo "Content-Type: text/event-stream"
-echo "Cache-Control: no-cache"
-echo "Connection: keep-alive"
-echo ""
+# Wichtig: Dieses Haupt-Installationsscript läuft im Add-on-Installer (kein CGI).
+# Deshalb KEINE SSE-Header hier ausgeben.
 
-exec 2>&1
-set -x
-
-echo "data: Starte FlugbuchViewer PI5 Installation..."
-echo ""
+echo "Starte FlugbuchViewer PI5 Installation..."
 
 USERNAME="flugbuch"
 USER_HOME="/home/$USERNAME"
@@ -19,16 +13,16 @@ SELF_PATH="$(readlink -f "$0" 2>/dev/null || echo "$0")"
 # === 0) Nur Raspberry Pi 5 erlauben ===
 MODEL="$(tr -d '\0' < /proc/device-tree/model 2>/dev/null || true)"
 if [[ -z "$MODEL" ]] || [[ "$MODEL" != *"Raspberry Pi 5"* ]]; then
-  echo "data: -----------------------------------------------------------------"
-  echo "data: Abbruch: Dieses Kiosk-Setup ist NUR für Raspberry Pi 5 erlaubt."
-  echo "data: Gefundenes Modell: ${MODEL:-unbekannt}"
-  echo "data: Script wird gelöscht."
-  echo "data: -----------------------------------------------------------------"
+  echo "-----------------------------------------------------------------"
+  echo "Abbruch: Dieses Kiosk-Setup ist NUR für Raspberry Pi 5 erlaubt."
+  echo "Gefundenes Modell: ${MODEL:-unbekannt}"
+  echo "Script wird gelöscht."
+  echo "-----------------------------------------------------------------"
   rm -f -- "$SELF_PATH" || true
   exit 1
 fi
 
-echo "data: OK: Raspberry Pi 5 erkannt: $MODEL"
+echo "OK: Raspberry Pi 5 erkannt: $MODEL"
 
 # 1) Pakete installieren
 sudo apt update
@@ -263,9 +257,10 @@ fi
 EOF
 sudo chmod +x "$CGI_LOG"
 
-# 7b) CGI in lighttpd aktivieren (sonst liefert /cgi-bin/* nichts)
+# 7b) CGI in lighttpd aktivieren (Restart NICHT hier, damit Installer-UI nicht abreißt)
 sudo lighttpd-enable-mod cgi >/dev/null 2>&1 || true
-sudo systemctl restart lighttpd || true
+# Hinweis: Restart erfolgt beim nächsten Reboot bzw. kann manuell gemacht werden:
+# sudo systemctl restart lighttpd
 
 # 8) HTML-Interface anlegen (mit Log-Funktion, Pi5 Style wie Original)
 HTML="/var/www/html/set_kiosk_url.html"
@@ -495,10 +490,8 @@ if [ -f "$INDEX_HTML" ] && ! sudo grep -q "set_kiosk_url.html" "$INDEX_HTML"; th
 fi
 
 echo ""
-echo "data: Fertig! Pi5-Kiosk-Setup wurde installiert."
-echo "data: Monitor an HDMI0 (Port nahe USB-C), dann Neustart."
-echo "data: Öffne im Browser: http://<IP>/set_kiosk_url.html"
+echo "Fertig! Pi5-Kiosk-Setup wurde installiert."
+echo "Monitor an HDMI0 (Port nahe USB-C), dann Neustart."
+echo "Öffne im Browser: http://<IP>/set_kiosk_url.html"
 echo ""
-
 exit 0
-
