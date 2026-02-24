@@ -9,7 +9,7 @@ echo "Start Node-RED Addon Setup: $(date)"
 echo "Logdatei: $LOGFILE"
 echo "-------------------------------------------"
 
-# CRLF -> LF (wie bei deinem Setup, aber nur wenn 'file' existiert)
+# CRLF -> LF
 if command -v file >/dev/null 2>&1; then
   if file "$0" | grep -q "with CRLF line terminators"; then
     echo "Konvertiere Windows-Zeilenenden (CRLF) in Unix (LF)..."
@@ -21,29 +21,33 @@ USERNAME="flugbuch"
 BASE_DIR="/opt/addons/NodeRed"
 DATA_DIR="$BASE_DIR/data"
 CONTAINER_NAME="nodered_addon"
-SERVICE_FILE="/etc/systemd/system/nodered-addon.service"
+SERVICE_NAME="nodered-addon.service"
+SERVICE_FILE="/etc/systemd/system/${SERVICE_NAME}"
 PORT_HOST="1881"
 PORT_CONTAINER="1880"
 
-# Script-Pfad für Selbstlöschung (nur dieses Script)
 SCRIPT_PATH="$(readlink -f "$0" 2>/dev/null || realpath "$0" 2>/dev/null || echo "$0")"
 
 SUCCESS=0
+BACKUP_NAME=""
+BACKUP_WAS_RUNNING=0
+NEW_CREATED=0
 
-cleanup_on_failure() {
+restore_backup_if_needed() {
   set +e
-  echo "Cleanup (bei Fehler)..."
 
-  # Service entfernen, falls angelegt
-  if [ -f "$SERVICE_FILE" ]; then
-    sudo systemctl disable --now nodered-addon.service >/dev/null 2>&1 || true
-    sudo rm -f "$SERVICE_FILE" >/dev/null 2>&1 || true
-    sudo systemctl daemon-reload >/dev/null 2>&1 || true
+  # Wenn neuer Container angelegt wurde, entfernen
+  if [ "$NEW_CREATED" -eq 1 ]; then
+    sudo docker rm -f "$CONTAINER_NAME" >/dev/null 2>&1 || true
   fi
 
-  # Container stoppen/entfernen, falls erstellt
-  if sudo docker ps -a --format '{{.Names}}' | grep -qx "$CONTAINER_NAME"; then
-    sudo docker rm -f "$CONTAINER_NAME" >/dev/null 2>&1 || true
+  # Backup zurückbenennen + ggf. wieder starten
+  if [ -n "$BACKUP_NAME" ] && sudo docker ps -a --format '{{.Names}}' | grep -qx "$BACKUP_NAME"; then
+    echo "Rollback: stelle vorherigen Container wieder her ($BACKUP_NAME -> $CONTAINER_NAME)"
+    sudo docker rename "$BACKUP_NAME" "$CONTAINER_NAME" >/dev/null 2>&1 || true
+    if [ "$BACKUP_WAS_RUNNING" -eq 1 ]; then
+      sudo docker start "$CONTAINER_NAME" >/dev/null 2>&1 || true
+    fi
   fi
 }
 
@@ -61,10 +65,10 @@ on_exit() {
 
   echo "-----------------------------------------------------------------"
   echo "Installation NICHT erfolgreich (Exit-Code: $ec)."
-  echo "Script wird gelöscht: $SCRIPT_PATH"
+  echo "Rollback + Script wird gelöscht: $SCRIPT_PATH"
   echo "-----------------------------------------------------------------"
 
-  cleanup_on_failure
+  restore_backup_if_needed
   self_delete
 }
 trap on_exit EXIT
@@ -88,22 +92,20 @@ if ! sudo systemctl is-active --quiet docker; then
   exit 1
 fi
 
-# === 2. Port prüfen (kein Konflikt zu deinem 1880 Setup) ===
-if sudo ss -ltn | awk '{print $4}' | grep -qE "(:|\.)${PORT_HOST}$"; then
-  echo "FEHLER: Port ${PORT_HOST} ist bereits belegt."
-  exit 1
-fi
-
-# === 3. Verzeichnisse anlegen (unter /opt/addons/NodeRed) ===
+# === 2. Verzeichnisse anlegen ===
 sudo mkdir -p "$DATA_DIR"
 
-# Rechte: Node-RED Image nutzt i.d.R. UID 1000
+# Rechte (optional)
 sudo chown -R 1000:1000 "$BASE_DIR" || true
 if id "$USERNAME" >/dev/null 2>&1; then
   sudo chown -R "$USERNAME:$USERNAME" "$BASE_DIR" || true
 fi
 
-# === 4. USB/Serial Devices dynamisch erkennen (falls schon eingesteckt) ===
+# === 3. dialout GID ===
+DIALOUT_GID="$(getent group dialout | awk -F: '{print $3}')"
+[ -z "$DIALOUT_GID" ] && DIALOUT_GID="20"
+
+# === 4. USB/Serial Devices dynamisch erkennen ===
 DEVICE_ARGS=()
 for d in /dev/ttyUSB* /dev/ttyACM*; do
   if [ -e "$d" ]; then
@@ -111,29 +113,36 @@ for d in /dev/ttyUSB* /dev/ttyACM*; do
   fi
 done
 
-# Optional: "echtes" USB (libusb/HID) – auf Pi vorhanden
-# (mit --privileged meist nicht nötig, schadet aber i.d.R. nicht)
 USB_BUS_MOUNT_ARGS=()
 if [ -d /dev/bus/usb ]; then
   USB_BUS_MOUNT_ARGS+=( "-v" "/dev/bus/usb:/dev/bus/usb" )
 fi
 
-# dialout GID (für /dev/ttyUSB*, /dev/ttyACM*)
-DIALOUT_GID="$(getent group dialout | awk -F: '{print $3}')"
-[ -z "$DIALOUT_GID" ] && DIALOUT_GID="20"
+# === 5. Service kurz stoppen (falls vorhanden), damit kein Rennen entsteht ===
+sudo systemctl stop "$SERVICE_NAME" >/dev/null 2>&1 || true
 
-# === 5. Bestehenden Addon-Container (nur unserer) ersetzen ===
-if sudo docker ps -a --format '{{.Names}}' | grep -qx "$CONTAINER_NAME"; then
-  echo "Vorhandener Container '$CONTAINER_NAME' wird ersetzt..."
-  sudo docker rm -f "$CONTAINER_NAME"
-fi
-
-# === 6. Image holen ===
+# === 6. Image holen (OHNE den laufenden Container anzufassen) ===
 echo "Pull Node-RED Image..."
 sudo docker pull nodered/node-red:latest
 
-# === 7. Container starten (USB Zugriff über --privileged) ===
-# Hinweis: --privileged = verlässlichster USB Zugriff ohne ständiges Nachpflegen der Devices
+# === 7. Falls Container existiert: Backup/Stop für Rollback ===
+if sudo docker ps -a --format '{{.Names}}' | grep -qx "$CONTAINER_NAME"; then
+  if sudo docker ps --format '{{.Names}}' | grep -qx "$CONTAINER_NAME"; then
+    BACKUP_WAS_RUNNING=1
+  fi
+  BACKUP_NAME="${CONTAINER_NAME}_backup_$(date +%Y%m%d%H%M%S)"
+  echo "Backup: $CONTAINER_NAME -> $BACKUP_NAME"
+  sudo docker stop "$CONTAINER_NAME" >/dev/null 2>&1 || true
+  sudo docker rename "$CONTAINER_NAME" "$BACKUP_NAME"
+fi
+
+# === 8. Port prüfen (jetzt sollte er frei sein, wenn es unser Container war) ===
+if sudo ss -ltn | awk '{print $4}' | grep -qE "(:|\.)${PORT_HOST}$"; then
+  echo "FEHLER: Port ${PORT_HOST} ist belegt (nicht durch unseren Container)."
+  exit 1
+fi
+
+# === 9. Neuen Container erstellen ===
 echo "Starte Container '$CONTAINER_NAME' auf Port ${PORT_HOST}..."
 sudo docker run -d \
   --name "$CONTAINER_NAME" \
@@ -146,9 +155,10 @@ sudo docker run -d \
   "${USB_BUS_MOUNT_ARGS[@]}" \
   "${DEVICE_ARGS[@]}" \
   nodered/node-red:latest
+NEW_CREATED=1
 
-# === 8. systemd Service (eigener Name, kein Konflikt) ===
-echo "Erstelle systemd Service: nodered-addon.service"
+# === 10. systemd Service aktualisieren/überschreiben ===
+echo "Aktualisiere systemd Service: $SERVICE_NAME"
 cat <<EOF | sudo tee "$SERVICE_FILE" >/dev/null
 [Unit]
 Description=Node-RED Addon (Docker) on port ${PORT_HOST}
@@ -168,16 +178,22 @@ WantedBy=multi-user.target
 EOF
 
 sudo systemctl daemon-reload
-sudo systemctl enable --now nodered-addon.service
+sudo systemctl enable --now "$SERVICE_NAME"
 
-# === 9. Ergebnis ===
+# === 11. Backup entfernen (Update erfolgreich) ===
+if [ -n "$BACKUP_NAME" ] && sudo docker ps -a --format '{{.Names}}' | grep -qx "$BACKUP_NAME"; then
+  echo "Entferne Backup-Container: $BACKUP_NAME"
+  sudo docker rm -f "$BACKUP_NAME" >/dev/null 2>&1 || true
+fi
+
+# === 12. Ergebnis ===
 IP="$(hostname -I | awk '{print $1}')"
 echo "-----------------------------------------------------------------"
 echo "OK: Node-RED Addon läuft"
 echo "URL:        http://$IP:${PORT_HOST}"
 echo "Data-Dir:   $DATA_DIR  -> /data"
 echo "Container:  $CONTAINER_NAME"
-echo "Service:    sudo systemctl status nodered-addon.service"
+echo "Service:    sudo systemctl status $SERVICE_NAME"
 echo "Logs:       sudo docker logs -f $CONTAINER_NAME"
 echo "-----------------------------------------------------------------"
 
