@@ -18,13 +18,27 @@ CONFIG_DIR="/opt/digitalflugbuch/data/DatenBuch"
 CONFIG_FILE="$CONFIG_DIR/externe_backup.conf"
 STATUS_FILE="$CONFIG_DIR/externe_backup_status.conf"
 
+BACKUP_RUNNER="/usr/local/bin/external_backup_run.sh"
+APPLY_TIMER="/usr/local/bin/external_backup_apply_timer.sh"
+
+GET_CONF="/usr/lib/cgi-bin/get_external_backup_conf.sh"
+STATUS_CGI="/usr/lib/cgi-bin/external_backup_status.sh"
+CONTROL_CGI="/usr/lib/cgi-bin/external_backup_control.sh"
+
+HTML_PATH="/var/www/html/externe_backup.html"
+INDEX_HTML="/var/www/html/index.html"
+
+SERVICE_FILE="/etc/systemd/system/external-backup.service"
+TIMER_FILE="/etc/systemd/system/external-backup.timer"
+SUDOERS_FILE="/etc/sudoers.d/external-backup"
+
 # 1. Pakete installieren
 echo "data: Installiere benötigte Pakete (lftp)..."
 echo ""
 sudo apt update
 sudo apt install -y lftp
 
-# 2. Konfigurationsverzeichnis anlegen
+# 2. Verzeichnisse anlegen
 echo "data: Erstelle Konfigurationsverzeichnis..."
 echo ""
 sudo mkdir -p "$CONFIG_DIR"
@@ -40,8 +54,7 @@ PORT=22
 USERNAME=
 PASSWORD=
 REMOTE_DIR=/backup
-REMOTE_FILE=DatenBuchBackup.tar.gz
-SOURCE_DIR=/data/DatenBuch
+REMOTE_FILE=DatenBuchBackup.tar
 ON_CALENDAR=daily
 FTP_PASSIVE=yes
 SFTP_STRICT_HOSTKEY=no
@@ -61,11 +74,13 @@ LAST_FILE=-
 LAST_SIZE_BYTES=0
 EOF
 fi
+
 sudo chown root:www-data "$STATUS_FILE"
 sudo chmod 664 "$STATUS_FILE"
 
-# 5. Backup-Skript
-BACKUP_RUNNER="/usr/local/bin/external_backup_run.sh"
+# 5. Backup-Runner anlegen
+echo "data: Erstelle Backup-Runner..."
+echo ""
 sudo tee "$BACKUP_RUNNER" > /dev/null <<'EOF'
 #!/bin/bash
 set -u
@@ -73,6 +88,7 @@ set -u
 CONFIG_FILE="/opt/digitalflugbuch/data/DatenBuch/externe_backup.conf"
 STATUS_FILE="/opt/digitalflugbuch/data/DatenBuch/externe_backup_status.conf"
 TMP_DIR="/tmp/externe_backup"
+SOURCE_DIR="/opt/digitalflugbuch/data/DatenBuch"
 
 mkdir -p "$TMP_DIR"
 
@@ -110,6 +126,7 @@ fail_exit() {
 }
 
 [ -f "$CONFIG_FILE" ] || fail_exit "Konfigurationsdatei fehlt: $CONFIG_FILE"
+[ -d "$SOURCE_DIR" ] || fail_exit "Quellverzeichnis existiert nicht: $SOURCE_DIR"
 
 PROTOCOL="$(cfg_get PROTOCOL "$CONFIG_FILE")"
 HOST="$(cfg_get HOST "$CONFIG_FILE")"
@@ -118,7 +135,6 @@ USERNAME="$(cfg_get USERNAME "$CONFIG_FILE")"
 PASSWORD="$(cfg_get PASSWORD "$CONFIG_FILE")"
 REMOTE_DIR="$(cfg_get REMOTE_DIR "$CONFIG_FILE")"
 REMOTE_FILE="$(cfg_get REMOTE_FILE "$CONFIG_FILE")"
-SOURCE_DIR="$(cfg_get SOURCE_DIR "$CONFIG_FILE")"
 FTP_PASSIVE="$(cfg_get FTP_PASSIVE "$CONFIG_FILE")"
 SFTP_STRICT_HOSTKEY="$(cfg_get SFTP_STRICT_HOSTKEY "$CONFIG_FILE")"
 
@@ -126,8 +142,6 @@ SFTP_STRICT_HOSTKEY="$(cfg_get SFTP_STRICT_HOSTKEY "$CONFIG_FILE")"
 [ -z "$HOST" ] && fail_exit "HOST ist leer."
 [ -z "$USERNAME" ] && fail_exit "USERNAME ist leer."
 [ -z "$REMOTE_FILE" ] && fail_exit "REMOTE_FILE ist leer."
-[ -z "$SOURCE_DIR" ] && fail_exit "SOURCE_DIR ist leer."
-[ -d "$SOURCE_DIR" ] || fail_exit "Quellverzeichnis existiert nicht: $SOURCE_DIR"
 
 case "$PROTOCOL" in
   ftp)
@@ -144,13 +158,10 @@ esac
 [ -z "$REMOTE_DIR" ] && REMOTE_DIR="/"
 
 TIMESTAMP="$(date +%Y%m%d_%H%M%S)"
-ARCHIVE_PATH="$TMP_DIR/DatenBuchBackup_${TIMESTAMP}.tar.gz"
-
-SOURCE_PARENT="$(dirname "$SOURCE_DIR")"
-SOURCE_NAME="$(basename "$SOURCE_DIR")"
+ARCHIVE_PATH="$TMP_DIR/DatenBuchBackup_${TIMESTAMP}.tar"
 
 echo "Erstelle Archiv: $ARCHIVE_PATH"
-tar -czf "$ARCHIVE_PATH" -C "$SOURCE_PARENT" "$SOURCE_NAME" || fail_exit "Archiv konnte nicht erstellt werden."
+tar -cf "$ARCHIVE_PATH" -C "/opt/digitalflugbuch/data" "DatenBuch" || fail_exit "Archiv konnte nicht erstellt werden."
 
 SIZE_BYTES="$(stat -c %s "$ARCHIVE_PATH" 2>/dev/null || echo 0)"
 
@@ -204,8 +215,9 @@ exit 0
 EOF
 sudo chmod 755 "$BACKUP_RUNNER"
 
-# 6. Timer-Skript
-APPLY_TIMER="/usr/local/bin/external_backup_apply_timer.sh"
+# 6. Timer-Anwender-Skript anlegen
+echo "data: Erstelle Timer-Steuerung..."
+echo ""
 sudo tee "$APPLY_TIMER" > /dev/null <<'EOF'
 #!/bin/bash
 set -e
@@ -261,7 +273,8 @@ EOF
 sudo chmod 755 "$APPLY_TIMER"
 
 # 7. systemd Service anlegen
-SERVICE_FILE="/etc/systemd/system/external-backup.service"
+echo "data: Erstelle systemd-Service..."
+echo ""
 sudo tee "$SERVICE_FILE" > /dev/null <<'EOF'
 [Unit]
 Description=Externes Backup Upload
@@ -277,8 +290,9 @@ EOF
 
 sudo systemctl daemon-reload
 
-# 8. CGI: Konfiguration auslesen
-GET_CONF="/usr/lib/cgi-bin/get_external_backup_conf.sh"
+# 8. CGI: Konfiguration lesen
+echo "data: Erstelle CGI für Konfiguration..."
+echo ""
 sudo tee "$GET_CONF" > /dev/null <<'EOF'
 #!/bin/bash
 
@@ -291,26 +305,37 @@ echo "Expires: 0"
 echo ""
 
 if [ ! -f "$CONFIG_FILE" ]; then
-  echo "PROTOCOL=sftp"
-  echo "HOST="
-  echo "PORT=22"
-  echo "USERNAME="
-  echo "PASSWORD="
-  echo "REMOTE_DIR=/backup"
-  echo "REMOTE_FILE=DatenBuchBackup.tar.gz"
-  echo "SOURCE_DIR=/data/DatenBuch"
-  echo "ON_CALENDAR=daily"
-  echo "FTP_PASSIVE=yes"
-  echo "SFTP_STRICT_HOSTKEY=no"
+  cat <<CFG
+PROTOCOL=sftp
+HOST=
+PORT=22
+USERNAME=
+PASSWORD=
+REMOTE_DIR=/backup
+REMOTE_FILE=DatenBuchBackup.tar
+ON_CALENDAR=daily
+FTP_PASSIVE=yes
+SFTP_STRICT_HOSTKEY=no
+CFG
   exit 0
 fi
 
-cat "$CONFIG_FILE"
+while IFS= read -r line; do
+  case "$line" in
+    PASSWORD=*)
+      echo "PASSWORD="
+      ;;
+    *)
+      echo "$line"
+      ;;
+  esac
+done < "$CONFIG_FILE"
 EOF
 sudo chmod 755 "$GET_CONF"
 
 # 9. CGI: Status
-STATUS_CGI="/usr/lib/cgi-bin/external_backup_status.sh"
+echo "data: Erstelle CGI für Status..."
+echo ""
 sudo tee "$STATUS_CGI" > /dev/null <<'EOF'
 #!/bin/bash
 
@@ -331,7 +356,6 @@ PROTOCOL="$(cfg_get PROTOCOL "$CONFIG_FILE")"
 HOST="$(cfg_get HOST "$CONFIG_FILE")"
 REMOTE_DIR="$(cfg_get REMOTE_DIR "$CONFIG_FILE")"
 REMOTE_FILE="$(cfg_get REMOTE_FILE "$CONFIG_FILE")"
-SOURCE_DIR="$(cfg_get SOURCE_DIR "$CONFIG_FILE")"
 ON_CALENDAR="$(cfg_get ON_CALENDAR "$CONFIG_FILE")"
 
 LAST_RUN="$(cfg_get LAST_RUN "$STATUS_FILE")"
@@ -360,7 +384,6 @@ printf '"protocol":"%s",' "$(json_escape "${PROTOCOL:-}")"
 printf '"host":"%s",' "$(json_escape "${HOST:-}")"
 printf '"remote_dir":"%s",' "$(json_escape "${REMOTE_DIR:-}")"
 printf '"remote_file":"%s",' "$(json_escape "${REMOTE_FILE:-}")"
-printf '"source_dir":"%s",' "$(json_escape "${SOURCE_DIR:-}")"
 printf '"on_calendar":"%s",' "$(json_escape "${ON_CALENDAR:-}")"
 printf '"last_run":"%s",' "$(json_escape "${LAST_RUN:--}")"
 printf '"last_result":"%s",' "$(json_escape "${LAST_RESULT:--}")"
@@ -375,7 +398,8 @@ EOF
 sudo chmod 755 "$STATUS_CGI"
 
 # 10. CGI: Steuerung
-CONTROL_CGI="/usr/lib/cgi-bin/external_backup_control.sh"
+echo "data: Erstelle CGI für Steuerung..."
+echo ""
 sudo tee "$CONTROL_CGI" > /dev/null <<'EOF'
 #!/bin/bash
 
@@ -396,6 +420,11 @@ get_param() {
   local raw
   raw="$(printf '%s' "$POST_DATA" | tr '&' '\n' | sed -n "s/^${key}=//p" | head -n1)"
   urldecode "$raw"
+}
+
+cfg_get() {
+  local key="$1"
+  grep -m1 "^${key}=" "$CONFIG_FILE" 2>/dev/null | cut -d= -f2-
 }
 
 clean_value() {
@@ -423,7 +452,9 @@ HTML
 }
 
 save_config() {
-  local PROTOCOL HOST PORT USERNAME PASSWORD REMOTE_DIR REMOTE_FILE SOURCE_DIR ON_CALENDAR FTP_PASSIVE SFTP_STRICT_HOSTKEY
+  local EXISTING_PASSWORD PROTOCOL HOST PORT USERNAME PASSWORD REMOTE_DIR REMOTE_FILE ON_CALENDAR FTP_PASSIVE SFTP_STRICT_HOSTKEY
+
+  EXISTING_PASSWORD="$(cfg_get PASSWORD)"
 
   PROTOCOL="$(clean_value "$(get_param protocol)")"
   HOST="$(clean_value "$(get_param host)")"
@@ -432,15 +463,13 @@ save_config() {
   PASSWORD="$(clean_value "$(get_param password)")"
   REMOTE_DIR="$(clean_value "$(get_param remote_dir)")"
   REMOTE_FILE="$(clean_value "$(get_param remote_file)")"
-  SOURCE_DIR="$(clean_value "$(get_param source_dir)")"
   ON_CALENDAR="$(clean_value "$(get_param on_calendar)")"
   FTP_PASSIVE="$(clean_value "$(get_param ftp_passive)")"
   SFTP_STRICT_HOSTKEY="$(clean_value "$(get_param sftp_strict_hostkey)")"
 
   [ -z "$PROTOCOL" ] && PROTOCOL="sftp"
   [ -z "$REMOTE_DIR" ] && REMOTE_DIR="/backup"
-  [ -z "$REMOTE_FILE" ] && REMOTE_FILE="DatenBuchBackup.tar.gz"
-  [ -z "$SOURCE_DIR" ] && SOURCE_DIR="/data/DatenBuch"
+  [ -z "$REMOTE_FILE" ] && REMOTE_FILE="DatenBuchBackup.tar"
   [ -z "$ON_CALENDAR" ] && ON_CALENDAR="daily"
   [ -z "$FTP_PASSIVE" ] && FTP_PASSIVE="yes"
   [ -z "$SFTP_STRICT_HOSTKEY" ] && SFTP_STRICT_HOSTKEY="no"
@@ -453,6 +482,10 @@ save_config() {
     fi
   fi
 
+  if [ -z "$PASSWORD" ]; then
+    PASSWORD="$EXISTING_PASSWORD"
+  fi
+
   mkdir -p "$(dirname "$CONFIG_FILE")"
 
   cat > "$CONFIG_FILE" <<CFG
@@ -463,7 +496,6 @@ USERNAME=$USERNAME
 PASSWORD=$PASSWORD
 REMOTE_DIR=$REMOTE_DIR
 REMOTE_FILE=$REMOTE_FILE
-SOURCE_DIR=$SOURCE_DIR
 ON_CALENDAR=$ON_CALENDAR
 FTP_PASSIVE=$FTP_PASSIVE
 SFTP_STRICT_HOSTKEY=$SFTP_STRICT_HOSTKEY
@@ -473,17 +505,21 @@ CFG
   chmod 660 "$CONFIG_FILE"
 }
 
+masked_config() {
+  sed 's/^PASSWORD=.*/PASSWORD=********/' "$CONFIG_FILE" 2>/dev/null
+}
+
 ACTION="$(clean_value "$(get_param action)")"
 
 case "$ACTION" in
   save)
     save_config
-    MASKED="$(sed 's/^PASSWORD=.*/PASSWORD=********/' "$CONFIG_FILE")"
-    html_response "Konfiguration gespeichert." "$MASKED"
+    html_response "Konfiguration gespeichert." "$(masked_config)"
     ;;
 
   backup-now)
     save_config
+    sudo /usr/local/bin/external_backup_apply_timer.sh write >/dev/null 2>&1 || true
     OUTPUT="$(sudo /usr/local/bin/external_backup_run.sh 2>&1)"
     RET=$?
     if [ $RET -eq 0 ]; then
@@ -505,6 +541,7 @@ case "$ACTION" in
     ;;
 
   auto-disable)
+    save_config
     OUTPUT="$(sudo /usr/local/bin/external_backup_apply_timer.sh disable 2>&1)"
     RET=$?
     if [ $RET -eq 0 ]; then
@@ -528,8 +565,9 @@ esac
 EOF
 sudo chmod 755 "$CONTROL_CGI"
 
-# 11. HTML-Datei
-HTML_PATH="/var/www/html/externe_backup.html"
+# 11. HTML-Oberfläche
+echo "data: Erstelle HTML-Oberfläche..."
+echo ""
 sudo tee "$HTML_PATH" > /dev/null <<'EOF'
 <!DOCTYPE html>
 <html lang="de">
@@ -623,7 +661,6 @@ sudo tee "$HTML_PATH" > /dev/null <<'EOF'
     <div class="grid" id="backup-status">
       <div><strong>Protokoll:</strong></div><div id="st-protocol">-</div>
       <div><strong>Server:</strong></div><div id="st-host" class="mono">-</div>
-      <div><strong>Quelle:</strong></div><div id="st-source" class="mono">-</div>
       <div><strong>Ziel:</strong></div><div id="st-target" class="mono">-</div>
       <div><strong>Automatik:</strong></div><div id="st-auto"><span class="pill">-</span></div>
       <div><strong>Zeitplan:</strong></div><div id="st-calendar" class="mono">-</div>
@@ -661,16 +698,16 @@ sudo tee "$HTML_PATH" > /dev/null <<'EOF'
         <div><input type="text" name="username" id="username" /></div>
 
         <div><label for="password"><strong>Passwort</strong></label></div>
-        <div><input type="password" name="password" id="password" /></div>
+        <div>
+          <input type="password" name="password" id="password" placeholder="leer lassen = gespeichertes Passwort beibehalten" />
+          <div class="muted">Das gespeicherte Passwort wird aus Sicherheitsgründen nicht angezeigt.</div>
+        </div>
 
         <div><label for="remote_dir"><strong>Zielverzeichnis am Server</strong></label></div>
         <div><input type="text" name="remote_dir" id="remote_dir" placeholder="/backup" /></div>
 
         <div><label for="remote_file"><strong>Zieldatei</strong></label></div>
-        <div><input type="text" name="remote_file" id="remote_file" placeholder="DatenBuchBackup.tar.gz" /></div>
-
-        <div><label for="source_dir"><strong>Lokales Quellverzeichnis</strong></label></div>
-        <div><input type="text" name="source_dir" id="source_dir" placeholder="/data/DatenBuch" /></div>
+        <div><input type="text" name="remote_file" id="remote_file" placeholder="DatenBuchBackup.tar" /></div>
 
         <div><label for="on_calendar"><strong>Automatik-Zeitplan</strong></label></div>
         <div>
@@ -720,7 +757,6 @@ sudo tee "$HTML_PATH" > /dev/null <<'EOF'
       PASSWORD: 'password',
       REMOTE_DIR: 'remote_dir',
       REMOTE_FILE: 'remote_file',
-      SOURCE_DIR: 'source_dir',
       ON_CALENDAR: 'on_calendar',
       FTP_PASSIVE: 'ftp_passive',
       SFTP_STRICT_HOSTKEY: 'sftp_strict_hostkey'
@@ -776,7 +812,6 @@ sudo tee "$HTML_PATH" > /dev/null <<'EOF'
 
         document.getElementById('st-protocol').textContent = d.protocol || '-';
         document.getElementById('st-host').textContent = d.host || '-';
-        document.getElementById('st-source').textContent = d.source_dir || '-';
         document.getElementById('st-target').textContent = (d.remote_dir || '-') + '/' + (d.remote_file || '-');
         document.getElementById('st-calendar').textContent = d.on_calendar || '-';
         document.getElementById('st-run').textContent = d.last_run || '-';
@@ -802,26 +837,22 @@ sudo tee "$HTML_PATH" > /dev/null <<'EOF'
 </html>
 EOF
 
-# 12. sudoers-Regeln
-SUDO_LINE1="www-data ALL=(ALL) NOPASSWD: /usr/local/bin/external_backup_run.sh"
-SUDO_LINE2="www-data ALL=(ALL) NOPASSWD: /usr/local/bin/external_backup_apply_timer.sh"
-SUDO_LINE3="www-data ALL=(ALL) NOPASSWD: /bin/systemctl"
+# 12. Sudoers sauber über /etc/sudoers.d
+echo "data: Erstelle sudoers-Regeln..."
+echo ""
+sudo tee "$SUDOERS_FILE" > /dev/null <<'EOF'
+www-data ALL=(ALL) NOPASSWD: /usr/local/bin/external_backup_run.sh
+www-data ALL=(ALL) NOPASSWD: /usr/local/bin/external_backup_apply_timer.sh
+www-data ALL=(ALL) NOPASSWD: /bin/systemctl
+EOF
+sudo chmod 440 "$SUDOERS_FILE"
 
-if ! sudo grep -qF "$SUDO_LINE1" /etc/sudoers; then
-  echo "$SUDO_LINE1" | sudo tee -a /etc/sudoers > /dev/null
-fi
-if ! sudo grep -qF "$SUDO_LINE2" /etc/sudoers; then
-  echo "$SUDO_LINE2" | sudo tee -a /etc/sudoers > /dev/null
-fi
-if ! sudo grep -qF "$SUDO_LINE3" /etc/sudoers; then
-  echo "$SUDO_LINE3" | sudo tee -a /etc/sudoers > /dev/null
-fi
-
-# 13. Standard-Timerdatei schreiben, aber nicht automatisch aktivieren
+# 13. Standard-Timerdatei schreiben
+echo "data: Schreibe Standard-Timer..."
+echo ""
 sudo /usr/local/bin/external_backup_apply_timer.sh write
 
 # 14. Button auf index.html hinzufügen
-INDEX_HTML="/var/www/html/index.html"
 LINK='<button type="button" onclick="window.location.href='\''externe_backup.html'\''">Externe Backup Funktion</button>'
 
 if [ -f "$INDEX_HTML" ] && ! grep -q "externe_backup.html" "$INDEX_HTML"; then
