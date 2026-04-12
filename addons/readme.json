@@ -97,8 +97,8 @@
       "autor": "Ebner Stephan"
     },
     {
-      "datei": "Externe Backup Funktion.sh",
-      "beschreibung": "Mit der Funktion ermöglicht es dem System Datensicherung Automatisch auf einen vorgeben exteren Server zu speichern um beim Ausfall keine Wichtige Inhalte zu verlieren.Wichtig: FTP ist unverschlüsselt. Wenn möglich, immer SFTP verwenden.",
+      "datei": "Externe_Backup_Funktion.sh",
+      "beschreibung": "Mit dieser Funktion kann das System Datensicherungen automatisch auf einem vorgegebenen externen Server speichern, um bei einem Ausfall keine wichtigen Inhalte zu verlieren. Wichtig: FTP ist unverschlüsselt. Wenn möglich, sollte daher immer SFTP verwendet werden.",
       "version": "1.0",
       "autor": "Ebner Stephan"
     }
