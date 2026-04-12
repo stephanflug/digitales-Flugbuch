@@ -95,6 +95,12 @@
       "beschreibung": "Mit der Funktion Node Red kann man die eingesetzte Flugbuch Hardware für zusätzliche Aufgaben vor Ort verwenden.Der Dienst ist unter http://DeineIPAdresse:1881 erreichbar.",
       "version": "1.0",
       "autor": "Ebner Stephan"
+    },
+    {
+      "datei": "Externe Backup Funktion.sh",
+      "beschreibung": "Mit der Funktion ermöglicht es dem System Datensicherung Automatisch auf einen vorgeben exteren Server zu speichern um beim Ausfall keine Wichtige Inhalte zu verlieren.Wichtig: FTP ist unverschlüsselt. Wenn möglich, immer SFTP verwenden.",
+      "version": "1.0",
+      "autor": "Ebner Stephan"
     }
   ]
 }
