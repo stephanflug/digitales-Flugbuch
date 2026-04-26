@@ -99,7 +99,7 @@
     {
       "datei": "Backup_Funktion.sh",
       "beschreibung": "Mit dieser Funktion kann das System Datensicherungen automatisch auf einem vorgegebenen externen Server speichern, um bei einem Ausfall keine wichtigen Inhalte zu verlieren. Wichtig: FTP ist unverschlüsselt. Wenn möglich, sollte daher immer SFTP verwendet werden.",
-      "version": "1.0",
+      "version": "1.5",
       "autor": "Ebner Stephan"
     }
   ]
