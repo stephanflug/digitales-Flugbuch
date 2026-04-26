@@ -143,7 +143,7 @@ MAX_BACKUPS="$(cfg_get MAX_BACKUPS "$CONFIG_FILE")"
 FTP_PASSIVE="$(cfg_get FTP_PASSIVE "$CONFIG_FILE")"
 SFTP_STRICT_HOSTKEY="$(cfg_get SFTP_STRICT_HOSTKEY "$CONFIG_FILE")"
 
-[ -z "$PROTOCOL" ] && fail_exit "PROTOCOL ist leer."
+[ -z "$PROTOCOL" ] && fail_exit "PROTOKOLL ist leer."
 [ -z "$HOST" ] && fail_exit "HOST ist leer."
 [ -z "$USERNAME" ] && fail_exit "USERNAME ist leer."
 
@@ -179,18 +179,20 @@ SIZE_BYTES="$(stat -c %s "$ARCHIVE_PATH" 2>/dev/null || echo 0)"
 
 if [ "$REMOTE_DIR" = "/" ] || [ "$REMOTE_DIR" = "." ] || [ -z "$REMOTE_DIR" ]; then
   REMOTE_DIR="/"
-  REMOTE_PREP='cd "/"'
   REMOTE_TARGET="/$REMOTE_FILE"
+  REMOTE_PREP_UPLOAD='cd "/"'
+  REMOTE_CD_ONLY='cd "/"'
 else
   REMOTE_DIR_ESC="$(escape_lftp "$REMOTE_DIR")"
-  REMOTE_PREP=$(cat <<PREP
+  REMOTE_TARGET="$REMOTE_DIR/$REMOTE_FILE"
+  REMOTE_PREP_UPLOAD="$(cat <<PREP
 set cmd:fail-exit no
 mkdir -p "$REMOTE_DIR_ESC"
 set cmd:fail-exit yes
 cd "$REMOTE_DIR_ESC"
 PREP
-)
-  REMOTE_TARGET="$REMOTE_DIR/$REMOTE_FILE"
+)"
+  REMOTE_CD_ONLY="cd \"$REMOTE_DIR_ESC\""
 fi
 
 if [ "$FTP_PASSIVE" = "no" ]; then
@@ -224,7 +226,7 @@ set ftp:passive-mode $LFTP_PASSIVE
 set ssl:verify-certificate no
 set sftp:auto-confirm $SFTP_AUTO_CONFIRM
 open -u "$LFTP_USER_ESC","$LFTP_PASS_ESC" "$PROTOCOL://$LFTP_HOST_ESC:$PORT"
-$REMOTE_PREP
+$REMOTE_PREP_UPLOAD
 put "$LFTP_ARCHIVE_ESC" -o "$LFTP_REMOTE_TMP_ESC"
 set cmd:fail-exit no
 rm "$LFTP_REMOTE_FILE_ESC"
@@ -252,7 +254,7 @@ set ftp:passive-mode $LFTP_PASSIVE
 set ssl:verify-certificate no
 set sftp:auto-confirm $SFTP_AUTO_CONFIRM
 open -u "$LFTP_USER_ESC","$LFTP_PASS_ESC" "$PROTOCOL://$LFTP_HOST_ESC:$PORT"
-$REMOTE_CD
+$REMOTE_CD_ONLY
 cls -1 "${LFTP_PREFIX_ESC}"_*.tar
 bye
 LFTP
@@ -277,7 +279,7 @@ LFTP
       echo "set ssl:verify-certificate no"
       echo "set sftp:auto-confirm $SFTP_AUTO_CONFIRM"
       printf 'open -u "%s","%s" "%s://%s:%s"\n' "$LFTP_USER_ESC" "$LFTP_PASS_ESC" "$PROTOCOL" "$LFTP_HOST_ESC" "$PORT"
-      echo "$REMOTE_CD"
+      echo "$REMOTE_CD_ONLY"
       for ((i=0; i<TO_DELETE; i++)); do
         printf 'rm "%s"\n' "$(escape_lftp "${REMOTE_FILES[$i]}")"
       done
