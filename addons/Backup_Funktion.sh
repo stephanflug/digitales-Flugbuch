@@ -179,12 +179,17 @@ SIZE_BYTES="$(stat -c %s "$ARCHIVE_PATH" 2>/dev/null || echo 0)"
 
 if [ "$REMOTE_DIR" = "/" ] || [ "$REMOTE_DIR" = "." ] || [ -z "$REMOTE_DIR" ]; then
   REMOTE_DIR="/"
-  REMOTE_MKDIR=""
-  REMOTE_CD='cd "/"'
+  REMOTE_PREP='cd "/"'
   REMOTE_TARGET="/$REMOTE_FILE"
 else
-  REMOTE_MKDIR="mkdir -p \"$(escape_lftp "$REMOTE_DIR")\""
-  REMOTE_CD="cd \"$(escape_lftp "$REMOTE_DIR")\""
+  REMOTE_DIR_ESC="$(escape_lftp "$REMOTE_DIR")"
+  REMOTE_PREP=$(cat <<PREP
+set cmd:fail-exit no
+mkdir -p "$REMOTE_DIR_ESC"
+set cmd:fail-exit yes
+cd "$REMOTE_DIR_ESC"
+PREP
+)
   REMOTE_TARGET="$REMOTE_DIR/$REMOTE_FILE"
 fi
 
@@ -219,8 +224,7 @@ set ftp:passive-mode $LFTP_PASSIVE
 set ssl:verify-certificate no
 set sftp:auto-confirm $SFTP_AUTO_CONFIRM
 open -u "$LFTP_USER_ESC","$LFTP_PASS_ESC" "$PROTOCOL://$LFTP_HOST_ESC:$PORT"
-$REMOTE_MKDIR
-$REMOTE_CD
+$REMOTE_PREP
 put "$LFTP_ARCHIVE_ESC" -o "$LFTP_REMOTE_TMP_ESC"
 set cmd:fail-exit no
 rm "$LFTP_REMOTE_FILE_ESC"
