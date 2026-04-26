@@ -29,7 +29,6 @@ HTML_PATH="/var/www/html/externe_backup.html"
 INDEX_HTML="/var/www/html/index.html"
 
 SERVICE_FILE="/etc/systemd/system/external-backup.service"
-TIMER_FILE="/etc/systemd/system/external-backup.timer"
 SUDOERS_FILE="/etc/sudoers.d/external-backup"
 
 # 1. Pakete installieren
@@ -54,7 +53,8 @@ PORT=22
 USERNAME=
 PASSWORD=
 REMOTE_DIR=/backup
-REMOTE_FILE=DatenBuchBackup.tar
+REMOTE_FILE_PREFIX=DatenBuchBackup
+MAX_BACKUPS=10
 ON_CALENDAR=daily
 FTP_PASSIVE=yes
 SFTP_STRICT_HOSTKEY=no
@@ -125,6 +125,10 @@ fail_exit() {
   exit 1
 }
 
+escape_lftp() {
+  printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g'
+}
+
 [ -f "$CONFIG_FILE" ] || fail_exit "Konfigurationsdatei fehlt: $CONFIG_FILE"
 [ -d "$SOURCE_DIR" ] || fail_exit "Quellverzeichnis existiert nicht: $SOURCE_DIR"
 
@@ -134,14 +138,22 @@ PORT="$(cfg_get PORT "$CONFIG_FILE")"
 USERNAME="$(cfg_get USERNAME "$CONFIG_FILE")"
 PASSWORD="$(cfg_get PASSWORD "$CONFIG_FILE")"
 REMOTE_DIR="$(cfg_get REMOTE_DIR "$CONFIG_FILE")"
-REMOTE_FILE="$(cfg_get REMOTE_FILE "$CONFIG_FILE")"
+REMOTE_FILE_PREFIX="$(cfg_get REMOTE_FILE_PREFIX "$CONFIG_FILE")"
+MAX_BACKUPS="$(cfg_get MAX_BACKUPS "$CONFIG_FILE")"
 FTP_PASSIVE="$(cfg_get FTP_PASSIVE "$CONFIG_FILE")"
 SFTP_STRICT_HOSTKEY="$(cfg_get SFTP_STRICT_HOSTKEY "$CONFIG_FILE")"
 
 [ -z "$PROTOCOL" ] && fail_exit "PROTOCOL ist leer."
 [ -z "$HOST" ] && fail_exit "HOST ist leer."
 [ -z "$USERNAME" ] && fail_exit "USERNAME ist leer."
-[ -z "$REMOTE_FILE" ] && fail_exit "REMOTE_FILE ist leer."
+
+[ -z "$REMOTE_FILE_PREFIX" ] && REMOTE_FILE_PREFIX="DatenBuchBackup"
+[ -z "$MAX_BACKUPS" ] && MAX_BACKUPS="10"
+[ -z "$REMOTE_DIR" ] && REMOTE_DIR="/"
+
+if ! [[ "$MAX_BACKUPS" =~ ^[0-9]+$ ]]; then
+  fail_exit "MAX_BACKUPS muss eine Zahl größer oder gleich 0 sein."
+fi
 
 case "$PROTOCOL" in
   ftp)
@@ -155,22 +167,25 @@ case "$PROTOCOL" in
     ;;
 esac
 
-[ -z "$REMOTE_DIR" ] && REMOTE_DIR="/"
-
 TIMESTAMP="$(date +%Y%m%d_%H%M%S)"
-ARCHIVE_PATH="$TMP_DIR/DatenBuchBackup_${TIMESTAMP}.tar"
+REMOTE_FILE="${REMOTE_FILE_PREFIX}_${TIMESTAMP}.tar"
+REMOTE_TMP_FILE="${REMOTE_FILE}.uploading"
+ARCHIVE_PATH="$TMP_DIR/$REMOTE_FILE"
 
 echo "Erstelle Archiv: $ARCHIVE_PATH"
 tar -cf "$ARCHIVE_PATH" -C "/opt/digitalflugbuch/data" "DatenBuch" || fail_exit "Archiv konnte nicht erstellt werden."
 
 SIZE_BYTES="$(stat -c %s "$ARCHIVE_PATH" 2>/dev/null || echo 0)"
 
-if [ "$REMOTE_DIR" = "/" ] || [ "$REMOTE_DIR" = "." ]; then
-  REMOTE_TARGET="/$REMOTE_FILE"
+if [ "$REMOTE_DIR" = "/" ] || [ "$REMOTE_DIR" = "." ] || [ -z "$REMOTE_DIR" ]; then
+  REMOTE_DIR="/"
   REMOTE_MKDIR=""
+  REMOTE_CD='cd "/"'
+  REMOTE_TARGET="/$REMOTE_FILE"
 else
+  REMOTE_MKDIR="mkdir -p \"$(escape_lftp "$REMOTE_DIR")\""
+  REMOTE_CD="cd \"$(escape_lftp "$REMOTE_DIR")\""
   REMOTE_TARGET="$REMOTE_DIR/$REMOTE_FILE"
-  REMOTE_MKDIR="mkdir -p \"$REMOTE_DIR\";"
 fi
 
 if [ "$FTP_PASSIVE" = "no" ]; then
@@ -185,9 +200,17 @@ else
   SFTP_AUTO_CONFIRM="true"
 fi
 
-LFTP_SCRIPT="$(mktemp)"
+LFTP_USER_ESC="$(escape_lftp "$USERNAME")"
+LFTP_PASS_ESC="$(escape_lftp "$PASSWORD")"
+LFTP_HOST_ESC="$(escape_lftp "$HOST")"
+LFTP_ARCHIVE_ESC="$(escape_lftp "$ARCHIVE_PATH")"
+LFTP_REMOTE_TMP_ESC="$(escape_lftp "$REMOTE_TMP_FILE")"
+LFTP_REMOTE_FILE_ESC="$(escape_lftp "$REMOTE_FILE")"
+LFTP_PREFIX_ESC="$(escape_lftp "$REMOTE_FILE_PREFIX")"
 
-cat > "$LFTP_SCRIPT" <<LFTP
+UPLOAD_SCRIPT="$(mktemp)"
+
+cat > "$UPLOAD_SCRIPT" <<LFTP
 set cmd:fail-exit yes
 set net:timeout 20
 set net:max-retries 2
@@ -195,27 +218,90 @@ set xfer:clobber yes
 set ftp:passive-mode $LFTP_PASSIVE
 set ssl:verify-certificate no
 set sftp:auto-confirm $SFTP_AUTO_CONFIRM
-open -u "$USERNAME","$PASSWORD" "$PROTOCOL://$HOST:$PORT"
+open -u "$LFTP_USER_ESC","$LFTP_PASS_ESC" "$PROTOCOL://$LFTP_HOST_ESC:$PORT"
 $REMOTE_MKDIR
-put "$ARCHIVE_PATH" -o "$REMOTE_TARGET"
+$REMOTE_CD
+put "$LFTP_ARCHIVE_ESC" -o "$LFTP_REMOTE_TMP_ESC"
+set cmd:fail-exit no
+rm "$LFTP_REMOTE_FILE_ESC"
+set cmd:fail-exit yes
+mv "$LFTP_REMOTE_TMP_ESC" "$LFTP_REMOTE_FILE_ESC"
 bye
 LFTP
 
 echo "Lade Backup hoch nach $PROTOCOL://$HOST:$PORT$REMOTE_TARGET"
-if ! lftp -f "$LFTP_SCRIPT"; then
-  rm -f "$LFTP_SCRIPT" "$ARCHIVE_PATH"
+if ! lftp -f "$UPLOAD_SCRIPT"; then
+  rm -f "$UPLOAD_SCRIPT" "$ARCHIVE_PATH"
   fail_exit "Upload fehlgeschlagen." "$REMOTE_TARGET" "$SIZE_BYTES"
 fi
 
-rm -f "$LFTP_SCRIPT" "$ARCHIVE_PATH"
+rm -f "$UPLOAD_SCRIPT"
 
-write_status "OK" "Backup erfolgreich hochgeladen." "$REMOTE_TARGET" "$SIZE_BYTES"
-echo "Backup erfolgreich hochgeladen nach $PROTOCOL://$HOST:$PORT$REMOTE_TARGET"
+PURGED_COUNT=0
+
+if [ "$MAX_BACKUPS" -gt 0 ]; then
+  LIST_SCRIPT="$(mktemp)"
+
+  cat > "$LIST_SCRIPT" <<LFTP
+set cmd:fail-exit no
+set ftp:passive-mode $LFTP_PASSIVE
+set ssl:verify-certificate no
+set sftp:auto-confirm $SFTP_AUTO_CONFIRM
+open -u "$LFTP_USER_ESC","$LFTP_PASS_ESC" "$PROTOCOL://$LFTP_HOST_ESC:$PORT"
+$REMOTE_CD
+cls -1 "${LFTP_PREFIX_ESC}"_*.tar
+bye
+LFTP
+
+  mapfile -t REMOTE_FILES < <(
+    lftp -f "$LIST_SCRIPT" 2>/dev/null \
+      | sed '/^[[:space:]]*$/d' \
+      | LC_ALL=C sort
+  )
+
+  rm -f "$LIST_SCRIPT"
+
+  FILE_COUNT="${#REMOTE_FILES[@]}"
+
+  if [ "$FILE_COUNT" -gt "$MAX_BACKUPS" ]; then
+    TO_DELETE=$((FILE_COUNT - MAX_BACKUPS))
+    DELETE_SCRIPT="$(mktemp)"
+
+    {
+      echo "set cmd:fail-exit yes"
+      echo "set ftp:passive-mode $LFTP_PASSIVE"
+      echo "set ssl:verify-certificate no"
+      echo "set sftp:auto-confirm $SFTP_AUTO_CONFIRM"
+      printf 'open -u "%s","%s" "%s://%s:%s"\n' "$LFTP_USER_ESC" "$LFTP_PASS_ESC" "$PROTOCOL" "$LFTP_HOST_ESC" "$PORT"
+      echo "$REMOTE_CD"
+      for ((i=0; i<TO_DELETE; i++)); do
+        printf 'rm "%s"\n' "$(escape_lftp "${REMOTE_FILES[$i]}")"
+      done
+      echo "bye"
+    } > "$DELETE_SCRIPT"
+
+    if lftp -f "$DELETE_SCRIPT"; then
+      PURGED_COUNT="$TO_DELETE"
+    fi
+
+    rm -f "$DELETE_SCRIPT"
+  fi
+fi
+
+rm -f "$ARCHIVE_PATH"
+
+MESSAGE="Backup erfolgreich hochgeladen: $REMOTE_FILE"
+if [ "$PURGED_COUNT" -gt 0 ]; then
+  MESSAGE="$MESSAGE. $PURGED_COUNT alte Sicherung(en) gelöscht."
+fi
+
+write_status "OK" "$MESSAGE" "$REMOTE_TARGET" "$SIZE_BYTES"
+echo "$MESSAGE"
 exit 0
 EOF
 sudo chmod 755 "$BACKUP_RUNNER"
 
-# 6. Timer-Anwender-Skript anlegen
+# 6. Timer-Steuerung anlegen
 echo "data: Erstelle Timer-Steuerung..."
 echo ""
 sudo tee "$APPLY_TIMER" > /dev/null <<'EOF'
@@ -312,7 +398,8 @@ PORT=22
 USERNAME=
 PASSWORD=
 REMOTE_DIR=/backup
-REMOTE_FILE=DatenBuchBackup.tar
+REMOTE_FILE_PREFIX=DatenBuchBackup
+MAX_BACKUPS=10
 ON_CALENDAR=daily
 FTP_PASSIVE=yes
 SFTP_STRICT_HOSTKEY=no
@@ -355,7 +442,8 @@ json_escape() {
 PROTOCOL="$(cfg_get PROTOCOL "$CONFIG_FILE")"
 HOST="$(cfg_get HOST "$CONFIG_FILE")"
 REMOTE_DIR="$(cfg_get REMOTE_DIR "$CONFIG_FILE")"
-REMOTE_FILE="$(cfg_get REMOTE_FILE "$CONFIG_FILE")"
+REMOTE_FILE_PREFIX="$(cfg_get REMOTE_FILE_PREFIX "$CONFIG_FILE")"
+MAX_BACKUPS="$(cfg_get MAX_BACKUPS "$CONFIG_FILE")"
 ON_CALENDAR="$(cfg_get ON_CALENDAR "$CONFIG_FILE")"
 
 LAST_RUN="$(cfg_get LAST_RUN "$STATUS_FILE")"
@@ -383,7 +471,8 @@ printf '"ok":true,'
 printf '"protocol":"%s",' "$(json_escape "${PROTOCOL:-}")"
 printf '"host":"%s",' "$(json_escape "${HOST:-}")"
 printf '"remote_dir":"%s",' "$(json_escape "${REMOTE_DIR:-}")"
-printf '"remote_file":"%s",' "$(json_escape "${REMOTE_FILE:-}")"
+printf '"remote_file_prefix":"%s",' "$(json_escape "${REMOTE_FILE_PREFIX:-}")"
+printf '"max_backups":"%s",' "$(json_escape "${MAX_BACKUPS:-0}")"
 printf '"on_calendar":"%s",' "$(json_escape "${ON_CALENDAR:-}")"
 printf '"last_run":"%s",' "$(json_escape "${LAST_RUN:--}")"
 printf '"last_result":"%s",' "$(json_escape "${LAST_RESULT:--}")"
@@ -451,8 +540,16 @@ html_response() {
 HTML
 }
 
+apply_timer_after_save() {
+  if sudo /bin/systemctl is-enabled external-backup.timer >/dev/null 2>&1; then
+    sudo /usr/local/bin/external_backup_apply_timer.sh restart >/dev/null 2>&1 || true
+  else
+    sudo /usr/local/bin/external_backup_apply_timer.sh write >/dev/null 2>&1 || true
+  fi
+}
+
 save_config() {
-  local EXISTING_PASSWORD PROTOCOL HOST PORT USERNAME PASSWORD REMOTE_DIR REMOTE_FILE ON_CALENDAR FTP_PASSIVE SFTP_STRICT_HOSTKEY
+  local EXISTING_PASSWORD PROTOCOL HOST PORT USERNAME PASSWORD REMOTE_DIR REMOTE_FILE_PREFIX MAX_BACKUPS ON_CALENDAR FTP_PASSIVE SFTP_STRICT_HOSTKEY
 
   EXISTING_PASSWORD="$(cfg_get PASSWORD)"
 
@@ -462,14 +559,16 @@ save_config() {
   USERNAME="$(clean_value "$(get_param username)")"
   PASSWORD="$(clean_value "$(get_param password)")"
   REMOTE_DIR="$(clean_value "$(get_param remote_dir)")"
-  REMOTE_FILE="$(clean_value "$(get_param remote_file)")"
+  REMOTE_FILE_PREFIX="$(clean_value "$(get_param remote_file_prefix)")"
+  MAX_BACKUPS="$(clean_value "$(get_param max_backups)")"
   ON_CALENDAR="$(clean_value "$(get_param on_calendar)")"
   FTP_PASSIVE="$(clean_value "$(get_param ftp_passive)")"
   SFTP_STRICT_HOSTKEY="$(clean_value "$(get_param sftp_strict_hostkey)")"
 
   [ -z "$PROTOCOL" ] && PROTOCOL="sftp"
   [ -z "$REMOTE_DIR" ] && REMOTE_DIR="/backup"
-  [ -z "$REMOTE_FILE" ] && REMOTE_FILE="DatenBuchBackup.tar"
+  [ -z "$REMOTE_FILE_PREFIX" ] && REMOTE_FILE_PREFIX="DatenBuchBackup"
+  [ -z "$MAX_BACKUPS" ] && MAX_BACKUPS="10"
   [ -z "$ON_CALENDAR" ] && ON_CALENDAR="daily"
   [ -z "$FTP_PASSIVE" ] && FTP_PASSIVE="yes"
   [ -z "$SFTP_STRICT_HOSTKEY" ] && SFTP_STRICT_HOSTKEY="no"
@@ -480,6 +579,10 @@ save_config() {
     else
       PORT="22"
     fi
+  fi
+
+  if ! [[ "$MAX_BACKUPS" =~ ^[0-9]+$ ]]; then
+    MAX_BACKUPS="10"
   fi
 
   if [ -z "$PASSWORD" ]; then
@@ -495,7 +598,8 @@ PORT=$PORT
 USERNAME=$USERNAME
 PASSWORD=$PASSWORD
 REMOTE_DIR=$REMOTE_DIR
-REMOTE_FILE=$REMOTE_FILE
+REMOTE_FILE_PREFIX=$REMOTE_FILE_PREFIX
+MAX_BACKUPS=$MAX_BACKUPS
 ON_CALENDAR=$ON_CALENDAR
 FTP_PASSIVE=$FTP_PASSIVE
 SFTP_STRICT_HOSTKEY=$SFTP_STRICT_HOSTKEY
@@ -514,12 +618,13 @@ ACTION="$(clean_value "$(get_param action)")"
 case "$ACTION" in
   save)
     save_config
+    apply_timer_after_save
     html_response "Konfiguration gespeichert." "$(masked_config)"
     ;;
 
   backup-now)
     save_config
-    sudo /usr/local/bin/external_backup_apply_timer.sh write >/dev/null 2>&1 || true
+    apply_timer_after_save
     OUTPUT="$(sudo /usr/local/bin/external_backup_run.sh 2>&1)"
     RET=$?
     if [ $RET -eq 0 ]; then
@@ -623,7 +728,7 @@ sudo tee "$HTML_PATH" > /dev/null <<'EOF'
     .btn-bad{ background: var(--bad); }
     .grid {
       display:grid;
-      grid-template-columns: 210px 1fr;
+      grid-template-columns: 220px 1fr;
       gap:10px 16px;
       align-items:center;
     }
@@ -661,13 +766,15 @@ sudo tee "$HTML_PATH" > /dev/null <<'EOF'
     <div class="grid" id="backup-status">
       <div><strong>Protokoll:</strong></div><div id="st-protocol">-</div>
       <div><strong>Server:</strong></div><div id="st-host" class="mono">-</div>
-      <div><strong>Ziel:</strong></div><div id="st-target" class="mono">-</div>
+      <div><strong>Zielverzeichnis:</strong></div><div id="st-target-dir" class="mono">-</div>
+      <div><strong>Datei-Präfix:</strong></div><div id="st-prefix" class="mono">-</div>
+      <div><strong>Max. Backups:</strong></div><div id="st-max-backups" class="mono">-</div>
       <div><strong>Automatik:</strong></div><div id="st-auto"><span class="pill">-</span></div>
       <div><strong>Zeitplan:</strong></div><div id="st-calendar" class="mono">-</div>
       <div><strong>Letzter Lauf:</strong></div><div id="st-run">-</div>
       <div><strong>Ergebnis:</strong></div><div id="st-result"><span class="pill">-</span></div>
       <div><strong>Meldung:</strong></div><div id="st-message">-</div>
-      <div><strong>Datei:</strong></div><div id="st-file" class="mono">-</div>
+      <div><strong>Letzte Datei:</strong></div><div id="st-file" class="mono">-</div>
       <div><strong>Größe:</strong></div><div id="st-size" class="mono">0 B</div>
     </div>
 
@@ -706,8 +813,17 @@ sudo tee "$HTML_PATH" > /dev/null <<'EOF'
         <div><label for="remote_dir"><strong>Zielverzeichnis am Server</strong></label></div>
         <div><input type="text" name="remote_dir" id="remote_dir" placeholder="/backup" /></div>
 
-        <div><label for="remote_file"><strong>Zieldatei</strong></label></div>
-        <div><input type="text" name="remote_file" id="remote_file" placeholder="DatenBuchBackup.tar" /></div>
+        <div><label for="remote_file_prefix"><strong>Datei-Präfix</strong></label></div>
+        <div>
+          <input type="text" name="remote_file_prefix" id="remote_file_prefix" placeholder="DatenBuchBackup" />
+          <div class="muted">Der Dateiname wird automatisch mit Datum und Uhrzeit ergänzt, z. B. DatenBuchBackup_20260426_031500.tar</div>
+        </div>
+
+        <div><label for="max_backups"><strong>Max. Anzahl Backups</strong></label></div>
+        <div>
+          <input type="number" name="max_backups" id="max_backups" min="0" placeholder="10" />
+          <div class="muted">Wenn die Anzahl überschritten wird, werden die ältesten Backups automatisch gelöscht. 0 = keine automatische Löschung.</div>
+        </div>
 
         <div><label for="on_calendar"><strong>Automatik-Zeitplan</strong></label></div>
         <div>
@@ -756,7 +872,8 @@ sudo tee "$HTML_PATH" > /dev/null <<'EOF'
       USERNAME: 'username',
       PASSWORD: 'password',
       REMOTE_DIR: 'remote_dir',
-      REMOTE_FILE: 'remote_file',
+      REMOTE_FILE_PREFIX: 'remote_file_prefix',
+      MAX_BACKUPS: 'max_backups',
       ON_CALENDAR: 'on_calendar',
       FTP_PASSIVE: 'ftp_passive',
       SFTP_STRICT_HOSTKEY: 'sftp_strict_hostkey'
@@ -812,7 +929,9 @@ sudo tee "$HTML_PATH" > /dev/null <<'EOF'
 
         document.getElementById('st-protocol').textContent = d.protocol || '-';
         document.getElementById('st-host').textContent = d.host || '-';
-        document.getElementById('st-target').textContent = (d.remote_dir || '-') + '/' + (d.remote_file || '-');
+        document.getElementById('st-target-dir').textContent = d.remote_dir || '-';
+        document.getElementById('st-prefix').textContent = d.remote_file_prefix || '-';
+        document.getElementById('st-max-backups').textContent = d.max_backups || '-';
         document.getElementById('st-calendar').textContent = d.on_calendar || '-';
         document.getElementById('st-run').textContent = d.last_run || '-';
         document.getElementById('st-message').textContent = d.last_message || '-';
@@ -837,7 +956,7 @@ sudo tee "$HTML_PATH" > /dev/null <<'EOF'
 </html>
 EOF
 
-# 12. Sudoers sauber über /etc/sudoers.d
+# 12. Sudoers-Regeln
 echo "data: Erstelle sudoers-Regeln..."
 echo ""
 sudo tee "$SUDOERS_FILE" > /dev/null <<'EOF'
@@ -847,7 +966,7 @@ www-data ALL=(ALL) NOPASSWD: /bin/systemctl
 EOF
 sudo chmod 440 "$SUDOERS_FILE"
 
-# 13. Standard-Timerdatei schreiben
+# 13. Standard-Timer schreiben
 echo "data: Schreibe Standard-Timer..."
 echo ""
 sudo /usr/local/bin/external_backup_apply_timer.sh write
