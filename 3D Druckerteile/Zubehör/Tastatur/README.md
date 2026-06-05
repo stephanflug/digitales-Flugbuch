@@ -22,7 +22,8 @@ Dieses Verzeichnis enthält eine 3D-druckbare Abdeckung für eine 4x4 Matrix-Tas
 | 7 | 3 |
 | 8 | 4 |
 
-<img width="778" height="753" alt="image" src="https://github.com/user-attachments/assets/cf82602d-f990-48ee-aab8-d9f0fa1c2318" />
+<img width="674" height="793" alt="image" src="https://github.com/user-attachments/assets/8c2f4082-f4f8-498c-891f-01db08d2489b" />
+
 
 
 
